@@ -18,6 +18,14 @@
 #define C_SET 0x03
 #define C_UA 0X07
 
+
+#define CONTROL_DATA	0x01
+#define CONTROL_START	0x02
+#define CONTROL_END		0x03
+
+#define C 0x00
+
+
 volatile int STOP=FALSE;
 
 char trama[5];
@@ -114,6 +122,32 @@ void sendSet(){
 }
 
 
+void sendTramaStart()
+{
+	char start[12];
+	
+	start[0]=FLAG;
+	start[1]=A;
+	start[2]=C;
+	start[3]=A^C;
+	start[4]=CONTROL_START;
+	start[5]=C;
+	start[6]=1;
+	start[7]=1;
+	start[8]=1;
+	start[9]=1;
+	start[10]='A';
+	start[11]=FLAG;
+	
+
+	int res = write(fd,start,sizeof(start));//envia a trama
+
+	printf("escreviNEW: %d \n",res);
+	
+
+
+}
+
 int main(int argc, char** argv)
 {
     int c, res;
@@ -172,6 +206,7 @@ int main(int argc, char** argv)
 
 	signal(SIGALRM, sigalrm_handler);
 	sendSet();
+	sendTramaStart();
 	alarm(3);
 /*
 	while(timeout<3){
@@ -202,6 +237,8 @@ int main(int argc, char** argv)
 			state = stateMachine(t[0], state, tmp);
 	printf("state %d \n", state);
 	}
+
+
 
 
 	sleep(1);
