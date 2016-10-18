@@ -57,23 +57,23 @@ int stateMachine(unsigned char c, int state, char tmp[]){
 			tmp[state]	= c;
 			state++;
 		}
-	break;	
+	break;
 	case 1:
 		if(c == A){
 			tmp[state] = c;
-			state++;		
+			state++;
 		}
 		else if(c != FLAG){
-			state = 0;		
+			state = 0;
 		}
 	break;
 	case 2:
 		if(c == C_UA){
 			tmp[state] = c;
-			state++;		
+			state++;
 		}
 		else if(c == FLAG){
-			state = 1;	
+			state = 1;
 		}
 		else{
 		 state = 0;
@@ -82,11 +82,11 @@ int stateMachine(unsigned char c, int state, char tmp[]){
 	case 3:
 		if(c == (tmp[1]^tmp[2])){
 			tmp[state] = c;
-			state++;	
+			state++;
 		}
 		else if(c == FLAG)
 			state = 1;
-		else 
+		else
 			state = 0;
 	break;
 	case 4:
@@ -118,14 +118,14 @@ void sendSet(){
 
 	printf("escrevi: %d \n",res);
 	//printf("tmp[0] = %c , tmp[1] = %c, tmp[2] = %c , tmp[3] = %c , tmp[4] = %c \n" , trama[0], trama[1], trama[2], trama[3], trama[4]);
-	
+
 }
 
 
 void sendTramaStart()
 {
 	char start[12];
-	
+
 	start[0]=FLAG;
 	start[1]=A;
 	start[2]=C;
@@ -138,12 +138,12 @@ void sendTramaStart()
 	start[9]=1;
 	start[10]='A';
 	start[11]=FLAG;
-	
+
 
 	int res = write(fd,start,sizeof(start));//envia a trama
 
 	printf("escreviNEW: %d \n",res);
-	
+
 
 
 }
@@ -156,8 +156,8 @@ int main(int argc, char** argv)
     int i = 0, sum = 0, speed = 0;
 	unsigned char tmp[5];
 
-    if ( (argc < 2) || 
-  	     ((strcmp("/dev/ttyS0", argv[1])!=0) && 
+    if ( (argc < 2) ||
+  	     ((strcmp("/dev/ttyS0", argv[1])!=0) &&
   	      (strcmp("/dev/ttyS1", argv[1])!=0) )) {
       printf("Usage:\tnserial SerialPort\n\tex: nserial /dev/ttyS1\n");
       exit(1);
@@ -172,7 +172,7 @@ int main(int argc, char** argv)
     if ( tcgetattr(fd,&oldtio) == -1) { /* save current port settings */
       perror("tcgetattr");
       exit(-1);
-    }
+				signal(SIGALRM, sigalrm_handler);
 
     bzero(&newtio, sizeof(newtio));
     newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
@@ -194,35 +194,36 @@ int main(int argc, char** argv)
     }
 
     printf("New termios structure set\n");
-  
-   
+
+
 	int size = 5;  // contains the size of the text *******************************
 	int wrote = 0;	// contains the size of the text that was wrote that time
 	int text = 0;	//  contains the size of the text that was wrote
-	
 
-	
-		
 
-	signal(SIGALRM, sigalrm_handler);
-	sendSet();
-	sendTramaStart();
-	alarm(3);
+
+
+
+
 /*
 	while(timeout<3){
-		
+
 
  		//sleep(1);
-		if(r=read(fd, &trama_leitura, 5)); //read one char by time	
+		if(r=read(fd, &trama_leitura, 5)); //read one char by time
 			printf("lii: %s \n",trama_leitura);
 			rt+=r;
 		if(rt==5)
 			break;
 	}
    	printf("\n");
-    
+
 */
 
+signal(SIGALRM, sigalrm_handler);
+sendSet();
+sendTramaStart();
+alarm(3);
 
 
 	unsigned char t[1];
