@@ -39,7 +39,7 @@ int setNewTermios(int fd);
 
 void configLinkLayer();
 
-int llopen(char * port, int flagMode);
+int llopen(int flagMode);
 
 int llwrite(int fd, char *buffer, int length);
 

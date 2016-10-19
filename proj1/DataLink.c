@@ -45,11 +45,11 @@ void configLinkLayer(){
   linkLayer->timeout = 3;
 }
 
-int llopen(char *port, int flagMode){
+int llopen(int flagMode){
   int fd;
 
-  fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
-  if (fd <0) {perror(port); exit(-1); }
+  fd = open(linkLayer->port, O_RDWR | O_NOCTTY );      // open SerialPort
+  if (fd <0) {perror(linkLayer->port); exit(-1); }
 
   if (setNewTermios(fd) != 0){            // set new termios
     perror("Error setting new termios");

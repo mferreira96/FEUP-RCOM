@@ -15,13 +15,21 @@ int  main(int argc, char** argv){
   configLinkLayer();
 
   int x;
-  if(argv[1] == 0)
-   x = llopen(linkLayer->port, TRANSMITER);
-  else
-   x = llopen(linkLayer->port, RECEIVER);
-
-  if(x != 0)
+  if(argv[1] == 0){
+    printf("TRANSMITER\n");
+   x = llopen(TRANSMITER);
+ }
+  else{
+    printf("RECIEVER\n");
+   x = llopen(RECEIVER);
+ }
+  if(x != 0){
     perror("Error on llopen");
+    exit(3);
+  }
+  else{
+    printf("Connection ended successfully\n");
+  }
 
   return 0;
 }
