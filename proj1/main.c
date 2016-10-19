@@ -11,15 +11,13 @@ int  main(int argc, char** argv){
     printf("Usage:./main flagMode");
     exit(1);
   }
-
-  configLinkLayer();
+  configLinkLayer(argv[1]);
 
   int x;
   if(argv[1] == 0){
     printf("TRANSMITER\n");
    x = llopen(TRANSMITER);
- }
-  else{
+  }else{
     printf("RECIEVER\n");
    x = llopen(RECEIVER);
  }

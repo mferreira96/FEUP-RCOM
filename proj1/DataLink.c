@@ -6,6 +6,29 @@ volatile int SEND=TRUE;
 
 unsigned int counterNumOfAttempts;
 
+LinkLayer * linkLayer;
+
+void configLinkLayer(int flagMode){
+  linkLayer = (LinkLayer*) malloc(sizeof(LinkLayer));
+
+  char * port;
+  if(flagMode == TRANSMITER){
+    port = "/dev/ttyS0";
+    strcpy(linkLayer->port,port);
+    printf("Sou transmissor\n");
+  }else{
+    port = "/dev/ttyS1";
+    strcpy(linkLayer->port, port);
+    printf("Sou receptor\n");
+  }
+
+  linkLayer->numTransmissions = 3;
+  linkLayer->baudRate = BAUDRATE;
+  linkLayer->timeout = 3;
+
+}
+
+
 int setNewTermios(int fd){
 
   if ( tcgetattr(fd,&linkLayer->oldtio) == -1) { /* save current port settings */
@@ -36,20 +59,12 @@ int setNewTermios(int fd){
   return 0;
 }
 
-
-
-void configLinkLayer(){
-  strcpy(linkLayer->port, "/dev/ttyS0");
-  linkLayer->numTransmissions = 3;
-  linkLayer->baudRate = BAUDRATE;
-  linkLayer->timeout = 3;
-}
-
 int llopen(int flagMode){
   int fd;
 
   fd = open(linkLayer->port, O_RDWR | O_NOCTTY );      // open SerialPort
   if (fd <0) {perror(linkLayer->port); exit(-1); }
+
 
   if (setNewTermios(fd) != 0){            // set new termios
     perror("Error setting new termios");

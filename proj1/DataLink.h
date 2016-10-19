@@ -33,11 +33,11 @@ typedef struct {
   struct termios oldtio,newtio;
 }LinkLayer;
 
-LinkLayer * linkLayer;
+extern LinkLayer* linkLayer;
 
 int setNewTermios(int fd);
 
-void configLinkLayer();
+void configLinkLayer(int flagMode);
 
 int llopen(int flagMode);
 
