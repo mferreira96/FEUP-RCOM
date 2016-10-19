@@ -30,9 +30,12 @@ typedef struct {
   unsigned int timeout;
   unsigned int numTransmissions;
   char frame[MAX_FRAME_SIZE];
+  struct termios oldtio,newtio;
 }LinkLayer;
 
 LinkLayer * linkLayer;
+
+int setNewTermios(int fd);
 
 void configLinkLayer();
 
