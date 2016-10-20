@@ -61,6 +61,7 @@ int setNewTermios(int fd){
   return 0;
 }
 
+
 int llopen(char *port, int flagMode){
   int fd;
 
@@ -117,6 +118,7 @@ Frame[19]=FLAG;
   return 0;
 }
 
+
 void sigalrm_handler(){
   SEND = TRUE;
   counterNumOfAttempts++;
@@ -159,7 +161,7 @@ int llread(int fd, char * buffer){
   sprintf(counter,"%d",contador);
   char *data;
   data= (char *) malloc(50);
-	
+
   memcpy(data,&buffer[4],calculateDataSize(pos));
 
 	if(blockCheckCharacter(data,calculateDataSize(pos))!=buffer[pos-2]){

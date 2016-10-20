@@ -71,4 +71,12 @@ void sigalrm_handler();
 
 char blockCheckCharacter(char buffer[], int size);
 
+int calculateDataSize(int size);
+
+int byteStuffing(char packet[], int size);
+
+int deByteStuffing(char packet[], int size);
+
+char blockCheckCharacter(char buffer[], int size);
+
 #endif
