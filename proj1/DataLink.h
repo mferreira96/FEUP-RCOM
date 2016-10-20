@@ -25,6 +25,12 @@
 #define FALSE 0
 #define TRUE 1
 
+#define CONTROL_START 	2
+#define CONTROL_END		3
+#define CONTROL_DATA	1
+
+#define PARAM_FILESIZE 	0
+#define PARAM_FILENAME	1
 
 typedef struct {
   char port[20];
@@ -35,13 +41,6 @@ typedef struct {
   char frame[MAX_FRAME_SIZE];
   struct termios oldtio,newtio;
 }LinkLayer;
-
-typedef enum {
-  SET = 0,
-  UA = 1,
-  INF = 2
-}FrameType;
-
 
 extern LinkLayer* linkLayer;
 
@@ -65,11 +64,15 @@ int connectTransmiter(int fd);
 
 int connectReciever(int fd);
 
-int stateMachine(unsigned char c, int state, char tmp[], FrameType frame, int pos);
+int stateMachine(unsigned char c, int state, char tmp[], int frame, int pos);
 
 void sigalrm_handler();
 
 char blockCheckCharacter(char buffer[], int size);
+
+void sendControlPackage(int control, int fd, char* name, char* filesize);
+
+void sendMessage(int fd, unsigned char* buf, int buf_size);
 
 int calculateDataSize(int size);
 
@@ -77,6 +80,6 @@ int byteStuffing(char packet[], int size);
 
 int deByteStuffing(char packet[], int size);
 
-char blockCheckCharacter(char buffer[], int size);
+
 
 #endif

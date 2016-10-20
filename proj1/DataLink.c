@@ -1,4 +1,4 @@
-	#include "DataLink.h"
+#include "DataLink.h"
 
 volatile int STOP=FALSE;
 volatile int SEND=TRUE;
@@ -6,7 +6,6 @@ volatile int SEND=TRUE;
 unsigned int counterNumOfAttempts;
 
 int contador=0;
-FrameType frameType;
 LinkLayer * linkLayer;
 
 int configLinkLayer(int flagMode){
@@ -96,7 +95,7 @@ printf("cheguei aqui \n");
 Frame[11]=1;
 Frame[12]=strlen("ONOME");
 memmove(Frame+13,"ONOME",5);
-Frame[18]=blockCheckCharacter(&Frame[4],14);
+Frame[18]= blockCheckCharacter(&Frame[4],14);
 Frame[19]=FLAG;
 
 	write(fd,Frame,20);
@@ -126,7 +125,14 @@ void sigalrm_handler(){
 
 
 // send frame
+//TUDO ainda por acabar
 int llwrite(int fd, char *buffer, int length){
+
+	while(STOP == FALSE)
+	{
+		//sendMessage(int fd, unsigned char* buf, int buf_size)
+
+
 
   return 0;
 }
@@ -134,7 +140,7 @@ int llwrite(int fd, char *buffer, int length){
 // recieve frame
 int llread(int fd, char * buffer){
 
-	frameType=INF;
+
 	unsigned char t[1];
 	int state = 0;
 	int r = 0;
@@ -145,17 +151,15 @@ int llread(int fd, char * buffer){
 		printf("c =  %c \n", t[0]);
 		if(r > 0)
 			{
-        state = stateMachine(t[0], state, buffer,frameType,pos);
+        state = stateMachine(t[0], state, buffer,2,pos);
         pos++;
       }
 		printf("state %d \n", state);
 	}
-
-
 	char send[5];
 	send[0]=FLAG;
 	send[1]=A;
-
+  int i=0;
 
   char counter[1];
   sprintf(counter,"%d",contador);
@@ -164,7 +168,8 @@ int llread(int fd, char * buffer){
 
   memcpy(data,&buffer[4],calculateDataSize(pos));
 
-	if(blockCheckCharacter(data,calculateDataSize(pos))!=buffer[pos-2]){
+
+	if(blockCheckCharacter(data,14)!=buffer[pos-2]){
     printf("recebi mal o bcc2\n");
     send[2]=(contador<<7)+C_REJ;
     printf("alalal %c", send[2]);
@@ -193,10 +198,6 @@ int llread(int fd, char * buffer){
 
 
   return 0;
-}
-
-int calculateDataSize(int size){
-	return size-6;
 }
 
 int byteStuffing(char packet[], int size){
@@ -250,8 +251,6 @@ int connectTransmitter(int fd){
   unsigned char t[1];
   unsigned char tmp[5];
   int pos=0;
-	frameType=UA;
-
   while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
     if(SEND){
       setAndSendSET(fd);
@@ -262,7 +261,7 @@ int connectTransmitter(int fd){
       printf("c =  %c \n", t[0]);
       if(r > 0)
         {
-          state = stateMachine(t[0], state, tmp,frameType,pos);
+          state = stateMachine(t[0], state, tmp,1,pos);
           pos++;
         }
 
@@ -284,14 +283,12 @@ int state = 0;
 int r = 0;
 int pos=0;
 STOP=FALSE;
-frameType=SET;
-
   while(STOP == FALSE){
   	r =  read(fd,t,1);
   	printf("c =  %c \n", t[0]);
   	if(r > 0)
   			{
-          state = stateMachine(t[0], state, tmp,frameType,pos);
+          state = stateMachine(t[0], state, tmp,0,pos);
           pos++;
         }
   	printf("state %d \n", state);
@@ -340,7 +337,7 @@ void setAndSendUA(int fd){
 }
 
 //trama 0->SET, 1->UA, 2->inf, acrescentar as q faltam e substituir por um enum
-int stateMachine(unsigned char c, int state, char tmp[],FrameType frame,int pos){
+int stateMachine(unsigned char c, int state, char tmp[],int trama,int pos){
 
 
 	switch(state){
@@ -360,7 +357,7 @@ int stateMachine(unsigned char c, int state, char tmp[],FrameType frame,int pos)
 		}
 	break;
 	case 2:
-		if((c == C_UA && frame==1)||(c == C_SET && frame==0)||(frame==2)){
+		if((c == C_UA && trama==1)||(c == C_SET && trama==0)||(trama==2)){
 
 			tmp[pos] = c;
 			state++;
@@ -387,13 +384,50 @@ int stateMachine(unsigned char c, int state, char tmp[],FrameType frame,int pos)
 			tmp[pos] = c;
 			STOP = TRUE;
 		}
-		else if (frame!=2)
+		else if (trama!=2)
 			state = 0;
-    else if(frame==2){
+    else if(trama==2){
       tmp[pos]=c;
     }
 	break;
 	}
 
 	return state;
+}
+
+
+void sendControlPackage(int control, int fd, char* filename, char* filesize)
+{
+
+	int sizeof_filesize = strlen(filesize);
+
+	int packageSize = 5 + sizeof_filesize + strlen(filename);
+
+
+	unsigned char controlPackage[packageSize];
+
+	controlPackage[0] = control;
+	controlPackage[1] = PARAM_FILESIZE;
+	controlPackage[2] = sizeof_filesize;
+	//Inserir o filesize
+	int i=0;
+	for(i; i < sizeof_filesize; i++)
+	{
+		controlPackage[3+i] = filesize[i];
+	}
+	int pos = 3+ sizeof_filesize;
+	controlPackage[pos] = PARAM_FILENAME;
+	controlPackage[++pos] = strlen(filename);
+	//inserir o filename
+	i=0;
+	for(i; i < strlen(filename); i++)
+	{
+		controlPackage[++pos] = filename[i];
+	}
+
+
+	//LLWRITE AQUI
+	//llwrite(fd, controlPackage, packageSize);
+
+
 }
