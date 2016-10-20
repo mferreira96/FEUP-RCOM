@@ -7,19 +7,19 @@
 
 int  main(int argc, char** argv){
 
-  if(argc != 2){
+  if(argc != 3){
     printf("Usage:./main flagMode");
     exit(1);
   }
   configLinkLayer(argv[1]);
 
   int x;
-  if(argv[1] == 0){
+  if(strcmp(argv[1], "0")==0){
     printf("TRANSMITER\n");
-   x = llopen(TRANSMITER);
+   x = llopen(argv[2],TRANSMITER);
   }else{
     printf("RECIEVER\n");
-   x = llopen(RECEIVER);
+   x = llopen(argv[2],RECEIVER);
  }
   if(x != 0){
     perror("Error on llopen");

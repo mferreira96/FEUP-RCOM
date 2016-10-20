@@ -1,4 +1,3 @@
-
 #include "DataLink.h"
 
 volatile int STOP=FALSE;
@@ -6,9 +5,10 @@ volatile int SEND=TRUE;
 
 unsigned int counterNumOfAttempts;
 
+int contador=0;
 LinkLayer * linkLayer;
 
-void configLinkLayer(int flagMode){
+int configLinkLayer(int flagMode){
   linkLayer = (LinkLayer*) malloc(sizeof(LinkLayer));
 
   char * port;
@@ -26,8 +26,9 @@ void configLinkLayer(int flagMode){
   linkLayer->baudRate = BAUDRATE;
   linkLayer->timeout = 3;
 
-}
+  return 1;
 
+}
 
 int setNewTermios(int fd){
 
@@ -59,12 +60,11 @@ int setNewTermios(int fd){
   return 0;
 }
 
-int llopen(int flagMode){
+int llopen(char *port, int flagMode){
   int fd;
 
-  fd = open(linkLayer->port, O_RDWR | O_NOCTTY );      // open SerialPort
-  if (fd <0) {perror(linkLayer->port); exit(-1); }
-
+  fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
+  if (fd <0) {perror(port); exit(-1); }
 
   if (setNewTermios(fd) != 0){            // set new termios
     perror("Error setting new termios");
@@ -72,13 +72,39 @@ int llopen(int flagMode){
   }
 
   signal(SIGALRM, sigalrm_handler);       //sigalrm_handler is the function  called when the alarm is fired
-
+  printf("cheguei aqui \n");
   int error;
   if(flagMode == TRANSMITER){
     error = connectTransmitter(fd); // Transmitter try to stablish communication
+
+char tamanho[4];
+sprintf(tamanho,"%ld",500);
+printf("tamanho : %s \n",tamanho);
+    char Frame[20];
+	Frame[0]=FLAG;
+Frame[1]=A;
+Frame[2]=contador;
+Frame[3]=Frame[1]^Frame[2];
+Frame[4]=2;
+Frame[5]=0;
+Frame[6]=4;
+printf("cheguei aqui \n");
+memmove(Frame+7,tamanho,4);
+printf("cheguei aqui \n");
+Frame[11]=1;
+Frame[12]=strlen("ONOME");
+memmove(Frame+13,"ONOME",5);
+Frame[18]=3;//blockCheckCharacter(&Frame[4],14);
+Frame[19]=FLAG;
+
+	write(fd,Frame,20);
   }
   else{
     error = connectReciever(fd);    //Reciever try to stablish communication
+    char * buffer;
+    buffer= (char *) malloc(50);
+    llread(fd,buffer);
+    free(buffer);
   }
 
   if(error == -1){
@@ -105,7 +131,87 @@ int llwrite(int fd, char *buffer, int length){
 // recieve frame
 int llread(int fd, char * buffer){
 
+
+	unsigned char t[1];
+	int state = 0;
+	int r = 0;
+  int pos=0;
+	STOP=FALSE;
+	while(STOP == FALSE){
+		r =  read(fd,t,1);
+		printf("c =  %c \n", t[0]);
+		if(r > 0)
+			{
+        state = stateMachine(t[0], state, buffer,2,pos);
+        pos++;
+      }
+		printf("state %d \n", state);
+	}
+	char send[5];
+	send[0]=FLAG;
+	send[1]=A;
+  int i=0;
+
+  char counter[1];
+  sprintf(counter,"%d",contador);
+  char *data;
+  data= (char *) malloc(50);
+  memcpy(data,&buffer[4],14);
+
+	if(blockCheckCharacter(data,14)!=buffer[pos-2]){
+    printf("recebi mal o bcc2\n");
+    send[2]=(contador<<7)+C_REJ;
+    printf("alalal %c", send[2]);
+	}
+  else if((buffer[2]+'0')!=counter[0]){
+    printf("recebi repetido \n");
+    if(contador==0)
+      send[2]=(0<<7)+C_RR;
+    else
+      send[2]=(1<<7)+C_RR;
+    printf("alalal %c \n", send[2]);
+  }
+  else{
+    printf("recebi\n");
+    if(contador==0)
+      contador=1;
+    else
+      contador=0;
+    send[2]=(contador<<7)+C_RR;
+    printf("alalal %c \n", send[2]);
+  }
+	send[3]=send[1]^send[2];
+	send[4]=FLAG;
+
+  write(fd,send,5);
+
+
   return 0;
+}
+
+int byteStuffing(char packet[], int size){
+  int i=0;
+  for(i;i< size;i++){
+    if(buffer[i]==FLAG||buffer[i]==ESC){
+      memmove(buffer+i+1,buffer+i,size-i);
+      buffer[i]=ESC;
+      buffer[i+1]=buffer[i+1]^0x20;
+      size++;
+    }
+  }
+  return size;
+}
+
+int deByteStuffing(char packet[], int size){
+  int i=0;
+  for(i;i< size;i++){
+    if(buffer[i]==ESC){
+      memmove(buffer+i,buffer+i+1,size-i);
+      buffer[i]=buffer[i]^0x20;
+      size--;
+    }
+  }
+  return size;
 }
 
 
@@ -113,6 +219,16 @@ int llread(int fd, char * buffer){
 int llclose(int fd){
 
   return 0;
+}
+
+char blockCheckCharacter(char buffer[], int size){
+	int i=0;
+	int bcc2=0;
+
+	for(i;i<size;i++){
+		bcc2=bcc2^buffer[i];
+	}
+	return bcc2;
 }
 
 
@@ -123,7 +239,7 @@ int connectTransmitter(int fd){
   int state = 0;
   unsigned char t[1];
   unsigned char tmp[5];
-
+  int pos=0;
   while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
     if(SEND){
       setAndSendSET(fd);
@@ -133,7 +249,10 @@ int connectTransmitter(int fd){
       r =  read(fd,t,1);
       printf("c =  %c \n", t[0]);
       if(r > 0)
-        state = stateMachine(t[0], state, tmp);
+        {
+          state = stateMachine(t[0], state, tmp,1,pos);
+          pos++;
+        }
 
     printf("state %d \n", state);
 
@@ -151,13 +270,16 @@ unsigned char tmp[5];
 unsigned char t[1];
 int state = 0;
 int r = 0;
-
+int pos=0;
 STOP=FALSE;
   while(STOP == FALSE){
   	r =  read(fd,t,1);
   	printf("c =  %c \n", t[0]);
   	if(r > 0)
-  			state = stateMachine(t[0], state, tmp);
+  			{
+          state = stateMachine(t[0], state, tmp,0,pos);
+          pos++;
+        }
   	printf("state %d \n", state);
   }
 
@@ -203,20 +325,20 @@ void setAndSendUA(int fd){
   }
 }
 
-
-int stateMachine(unsigned char c, int state, char tmp[]){
+//trama 0->SET, 1->UA, 2->inf, acrescentar as q faltam e substituir por um enum
+int stateMachine(unsigned char c, int state, char tmp[],int trama,int pos){
 
 
 	switch(state){
 	case 0:
 		if(c == FLAG){
-			tmp[state]	= c;
+			tmp[pos]	= c;
 			state++;
 		}
 	break;
 	case 1:
 		if(c == A){
-			tmp[state] = c;
+			tmp[pos] = c;
 			state++;
 		}
 		else if(c != FLAG){
@@ -224,8 +346,9 @@ int stateMachine(unsigned char c, int state, char tmp[]){
 		}
 	break;
 	case 2:
-		if(c == C_UA){
-			tmp[state] = c;
+		if((c == C_UA && trama==1)||(c == C_SET && trama==0)||(trama==2)){
+
+			tmp[pos] = c;
 			state++;
 		}
 		else if(c == FLAG){
@@ -237,7 +360,7 @@ int stateMachine(unsigned char c, int state, char tmp[]){
 	break;
 	case 3:
 		if(c == (tmp[1]^tmp[2])){
-			tmp[state] = c;
+			tmp[pos] = c;
 			state++;
 		}
 		else if(c == FLAG)
@@ -247,11 +370,14 @@ int stateMachine(unsigned char c, int state, char tmp[]){
 	break;
 	case 4:
 		if(c == FLAG){
-			tmp[state] = c;
+			tmp[pos] = c;
 			STOP = TRUE;
 		}
-		else
+		else if (trama!=2)
 			state = 0;
+    else if(trama==2){
+      tmp[pos]=c;
+    }
 	break;
 	}
 

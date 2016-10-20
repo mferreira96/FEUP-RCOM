@@ -19,6 +19,9 @@
 #define A          0x03
 #define C_SET      0x03
 #define C_UA       0x07
+#define C_RR       0x05
+#define C_REJ      0x01
+#define ESQ        0x7d
 #define FALSE 0
 #define TRUE 1
 
@@ -37,9 +40,9 @@ extern LinkLayer* linkLayer;
 
 int setNewTermios(int fd);
 
-void configLinkLayer(int flagMode);
+int configLinkLayer(int flagMode);
 
-int llopen(int flagMode);
+int llopen(char port[],int flagMode);
 
 int llwrite(int fd, char *buffer, int length);
 
@@ -55,8 +58,10 @@ int connectTransmiter(int fd);
 
 int connectReciever(int fd);
 
-int stateMachine(unsigned char c, int state, char tmp[]);
+int stateMachine(unsigned char c, int state, char tmp[], int frame, int pos);
 
 void sigalrm_handler();
+
+char blockCheckCharacter(char buffer[], int size);
 
 #endif
