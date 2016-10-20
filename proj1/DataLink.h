@@ -74,5 +74,12 @@ void sendControlPackage(int control, int fd, char* name, char* filesize);
 
 void sendMessage(int fd, unsigned char* buf, int buf_size);
 
+int calculateDataSize(int size);
+
+int byteStuffing(char packet[], int size);
+
+int deByteStuffing(char packet[], int size);
+
+
 
 #endif

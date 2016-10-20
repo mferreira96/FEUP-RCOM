@@ -1,4 +1,4 @@
-	#include "DataLink.h"
+#include "DataLink.h"
 
 volatile int STOP=FALSE;
 volatile int SEND=TRUE;
@@ -60,6 +60,7 @@ int setNewTermios(int fd){
   return 0;
 }
 
+
 int llopen(char *port, int flagMode){
   int fd;
 
@@ -116,6 +117,7 @@ Frame[19]=FLAG;
   return 0;
 }
 
+
 void sigalrm_handler(){
   SEND = TRUE;
   counterNumOfAttempts++;
@@ -123,7 +125,7 @@ void sigalrm_handler(){
 
 
 // send frame
-//TODO ainda por acabar
+//TUDO ainda por acabar
 int llwrite(int fd, char *buffer, int length){
 
 	while(STOP == FALSE)
@@ -163,7 +165,9 @@ int llread(int fd, char * buffer){
   sprintf(counter,"%d",contador);
   char *data;
   data= (char *) malloc(50);
-  memcpy(data,&buffer[4],14);
+
+  memcpy(data,&buffer[4],calculateDataSize(pos));
+
 
 	if(blockCheckCharacter(data,14)!=buffer[pos-2]){
     printf("recebi mal o bcc2\n");
@@ -396,7 +400,7 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 {
 
 	int sizeof_filesize = strlen(filesize);
-	
+
 	int packageSize = 5 + sizeof_filesize + strlen(filename);
 
 
@@ -404,7 +408,7 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 
 	controlPackage[0] = control;
 	controlPackage[1] = PARAM_FILESIZE;
-	controlPackage[2] = sizeof_filesize;		
+	controlPackage[2] = sizeof_filesize;
 	//Inserir o filesize
 	int i=0;
 	for(i; i < sizeof_filesize; i++)
@@ -424,11 +428,6 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 
 	//LLWRITE AQUI
 	//llwrite(fd, controlPackage, packageSize);
-	
+
 
 }
-
-
-
-
-
