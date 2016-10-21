@@ -15,8 +15,8 @@ int  main(int argc, char** argv){
 
   int x;
   if(strcmp(argv[1], "0")==0){
-    printf("TRANSMITER\n");
-   x = llopen(argv[2],TRANSMITER);
+    printf("TRANSMITTER\n");
+   x = llopen(argv[2],TRANSMITTER);
   }else{
     printf("RECIEVER\n");
    x = llopen(argv[2],RECEIVER);

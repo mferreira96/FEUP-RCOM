@@ -7,24 +7,19 @@ unsigned int counterNumOfAttempts;
 
 int contador=0;
 LinkLayer * linkLayer;
+TypeOfFrame typeOfFrame;
+
+
 
 int configLinkLayer(int flagMode){
   linkLayer = (LinkLayer*) malloc(sizeof(LinkLayer));
 
   char * port;
-  if(flagMode == TRANSMITER){
-    port = "/dev/ttyS0";
-    strcpy(linkLayer->port,port);
-    printf("Sou transmissor\n");
-  }else{
-    port = "/dev/ttyS1";
-    strcpy(linkLayer->port, port);
-    printf("Sou receptor\n");
-  }
-
+  port = "/dev/ttyS0";
+  strcpy(linkLayer->port,port);
   linkLayer->numTransmissions = 3;
   linkLayer->baudRate = BAUDRATE;
-  linkLayer->timeout = 3;
+  linkLayer->timeOut = 3;
 
   return 1;
 
@@ -75,7 +70,7 @@ int llopen(char *port, int flagMode){
   signal(SIGALRM, sigalrm_handler);       //sigalrm_handler is the function  called when the alarm is fired
   printf("cheguei aqui \n");
   int error;
-  if(flagMode == TRANSMITER){
+  if(flagMode == TRANSMITTER){
     error = connectTransmitter(fd); // Transmitter try to stablish communication
 
 char tamanho[4];
@@ -124,6 +119,7 @@ void sigalrm_handler(){
 }
 
 
+
 // send frame
 //TUDO ainda por acabar
 int llwrite(int fd, char *buffer, int length){
@@ -132,14 +128,19 @@ int llwrite(int fd, char *buffer, int length){
 	{
 		//sendMessage(int fd, unsigned char* buf, int buf_size)
 
-
+}
 
   return 0;
 }
 
+//return size of data in frame
+int calculateDataSize(int size){
+	return size-6;
+}
+
 // recieve frame
 int llread(int fd, char * buffer){
-
+	typeOfFrame = INF;
 
 	unsigned char t[1];
 	int state = 0;
@@ -151,7 +152,7 @@ int llread(int fd, char * buffer){
 		printf("c =  %c \n", t[0]);
 		if(r > 0)
 			{
-        state = stateMachine(t[0], state, buffer,2,pos);
+        state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
         pos++;
       }
 		printf("state %d \n", state);
@@ -225,9 +226,119 @@ int deByteStuffing(char packet[], int size){
   return size;
 }
 
+void setAndSendDisc(int fd){
+  unsigned char DISC[5];
+
+  DISC[0]= FLAG;	
+  DISC[1]= A;
+  DISC[2]= C_DISC;
+  DISC[3]= A^C_DISC;
+  DISC[4]= FLAG;
+  int res = write(fd,DISC,5);
+
+  if(res != 5){
+    perror("error sending DISC");
+  }
+
+
+}
+
+
+
+// close serial port
+int closeSerialPort(int fd){
+
+	if ( tcsetattr(fd,TCSANOW,&linkLayer->oldtio) == -1) {
+      perror("tcsetattr");
+      exit(-1);
+    }
+
+    close(fd);
+    return 0;
+}
+
 
 // end communication
-int llclose(int fd){
+int llclose(int fd, int type){
+ 	counterNumOfAttempts = 0;
+	typeOfFrame = DISC;
+	int r = 0;
+	unsigned char t[1];
+	int state = 0;
+	unsigned char tmp[5];
+	int pos=0;
+
+	switch(type){
+		case TRANSMITTER:
+			
+			while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
+				if(SEND){
+					setAndSendDisc(fd);
+					alarm(linkLayer->timeOut);
+					SEND = FALSE;
+				}
+				r =  read(fd,t,1);
+     			printf("c =  %c \n", t[0]);
+    			if(r > 0) {
+        			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
+        		  	pos++;
+        		}		
+			}
+			
+			if(STOP == TRUE){
+				setAndSendUA(fd);
+			}
+			
+			if(counterNumOfAttempts == linkLayer->numTransmissions && STOP == FALSE){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+	
+		
+		break;
+		case RECEIVER:
+ 			 while(STOP == FALSE){
+			  	r =  read(fd,t,1);
+			  	printf("c =  %c \n", t[0]);
+			  	if(r > 0){
+				 state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
+				 pos++;
+				}
+			  	printf("state %d \n", state);
+			  }
+			  
+			  if(STOP == TRUE){
+			  	STOP = FALSE;
+			  	SEND = TRUE; 
+			  	typeOfFrame = UA;
+			  	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
+					if(SEND){
+						setAndSendDisc(fd);
+						alarm(linkLayer->timeOut);
+						SEND = FALSE;
+					}
+					r =  read(fd,t,1);
+			 		printf("c =  %c \n", t[0]);
+					if(r > 0) {
+						state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
+					  	pos++;
+					}		
+				}
+			  }
+		
+		
+		break;
+		}
+	
+
+	if(closeSerialPort(fd) != 0){
+		perror("serial port with problems");
+		exit(3);
+	}
+	else{
+		printf("closed serial port successfully \n");
+	}
+	
 
   return 0;
 }
@@ -244,8 +355,8 @@ char blockCheckCharacter(char buffer[], int size){
 
 
 int connectTransmitter(int fd){
-
-  counterNumOfAttempts = 1;
+  typeOfFrame = UA;
+  counterNumOfAttempts = 0;
   int r ;
   int state = 0;
   unsigned char t[1];
@@ -254,14 +365,14 @@ int connectTransmitter(int fd){
   while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
     if(SEND){
       setAndSendSET(fd);
-      alarm(linkLayer->timeout);
+      alarm(linkLayer->timeOut);
       SEND = FALSE;
     }
       r =  read(fd,t,1);
       printf("c =  %c \n", t[0]);
       if(r > 0)
         {
-          state = stateMachine(t[0], state, tmp,1,pos);
+          state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
           pos++;
         }
 
@@ -276,7 +387,7 @@ int connectTransmitter(int fd){
 
 
 int connectReciever(int fd){
-
+typeOfFrame = SET;
 unsigned char tmp[5];
 unsigned char t[1];
 int state = 0;
@@ -288,7 +399,7 @@ STOP=FALSE;
   	printf("c =  %c \n", t[0]);
   	if(r > 0)
   			{
-          state = stateMachine(t[0], state, tmp,0,pos);
+          state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
           pos++;
         }
   	printf("state %d \n", state);
@@ -336,8 +447,8 @@ void setAndSendUA(int fd){
   }
 }
 
-//trama 0->SET, 1->UA, 2->inf, acrescentar as q faltam e substituir por um enum
-int stateMachine(unsigned char c, int state, char tmp[],int trama,int pos){
+//tyoe 0->SET, 1->UA, 2->INF, 3->DISC acrescentar as q faltam e substituir por um enum
+int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos){
 
 
 	switch(state){
@@ -357,7 +468,7 @@ int stateMachine(unsigned char c, int state, char tmp[],int trama,int pos){
 		}
 	break;
 	case 2:
-		if((c == C_UA && trama==1)||(c == C_SET && trama==0)||(trama==2)){
+		if((c == C_UA && type==1)||(c == C_SET && type==0)||(type==2)){
 
 			tmp[pos] = c;
 			state++;
@@ -384,11 +495,11 @@ int stateMachine(unsigned char c, int state, char tmp[],int trama,int pos){
 			tmp[pos] = c;
 			STOP = TRUE;
 		}
-		else if (trama!=2)
+		else if (type!=2)
 			state = 0;
-    else if(trama==2){
-      tmp[pos]=c;
-    }
+   		else if(type==2){
+      		tmp[pos]=c;
+    	}
 	break;
 	}
 
@@ -427,7 +538,7 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 
 
 	//LLWRITE AQUI
-	//llwrite(fd, controlPackage, packageSize);
+	
 
 
 }

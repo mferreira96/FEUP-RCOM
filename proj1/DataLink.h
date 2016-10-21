@@ -13,7 +13,7 @@
 
 #define MAX_FRAME_SIZE 1024
 #define BAUDRATE   B38400
-#define TRANSMITER  0
+#define TRANSMITTER  0
 #define RECEIVER    1
 #define FLAG       0x7e
 #define A          0x03
@@ -21,6 +21,7 @@
 #define C_UA       0x07
 #define C_RR       0x05
 #define C_REJ      0x01
+#define C_DISC     0x0b
 #define ESC        0x7d
 #define FALSE 0
 #define TRUE 1
@@ -36,11 +37,18 @@ typedef struct {
   char port[20];
   int baudRate;
   unsigned int sequenceNumber;
-  unsigned int timeout;
+  unsigned int timeOut;
   unsigned int numTransmissions;
   char frame[MAX_FRAME_SIZE];
   struct termios oldtio,newtio;
 }LinkLayer;
+
+typedef enum{
+	SET = 0,
+	UA = 1,
+	INF = 2,
+	DISC = 3
+}TypeOfFrame;
 
 extern LinkLayer* linkLayer;
 
@@ -54,7 +62,7 @@ int llwrite(int fd, char *buffer, int length);
 
 int llread(int fd, char * buffer);
 
-int llclose(int fd);
+int llclose(int fd, int type);
 
 void setAndSendSET(int fd);
 
@@ -64,7 +72,7 @@ int connectTransmiter(int fd);
 
 int connectReciever(int fd);
 
-int stateMachine(unsigned char c, int state, char tmp[], int frame, int pos);
+int stateMachine(unsigned char c, int state, char tmp[], TypeOfFrame type, int pos);
 
 void sigalrm_handler();
 
