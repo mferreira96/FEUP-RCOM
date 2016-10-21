@@ -6,7 +6,14 @@
 #include "DataLink.h"
 
 int  main(int argc, char** argv){
+////TESTE////TESTE////TESTE////TESTE////TESTE
+  char n[10];
+printf("\n aquii 0 \n");
+llwrite(1, &n, 1);
 
+//  printf("\n\n\n end end end \n\n\n");
+  ////TESTE ////TESTE ////TESTE ////TESTE
+  
   if(argc != 3){
     printf("Usage:./main flagMode");
     exit(1);
