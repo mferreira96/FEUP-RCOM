@@ -4,6 +4,8 @@ volatile int STOP=FALSE;
 volatile int SEND=TRUE;
 
 unsigned int counterNumOfAttempts;
+unsigned int timeout;
+unsigned int alarm_n;
 
 int contador=0;
 LinkLayer * linkLayer;
@@ -63,6 +65,7 @@ int setNewTermios(int fd){
 
 int llopen(char *port, int flagMode){
   int fd;
+  alarm_n=1;
 
   fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
   if (fd <0) {perror(port); exit(-1); }
@@ -118,20 +121,56 @@ Frame[19]=FLAG;
 }
 
 
-void sigalrm_handler(){
+void sigalrm_handler()
+{
+  if(alarm_n == 1)
+  {
   SEND = TRUE;
   counterNumOfAttempts++;
+  }
+  else if (alarm_n == 2)
+  {
+      timeout++;
+      printf("\n Timeout, llwrite n%d \n",timeout);
+
+        if(timeout >=3)//TODO mudar para linklayer...
+          alarm(0);
+        else
+        alarm(3); //TODO mufar para linklayer
+
+  }
+  else
+    printf("\n erro alarm handler \n");
 }
+
 
 
 // send frame
 //TUDO ainda por acabar
-int llwrite(int fd, char *buffer, int length){
+int llwrite(int fd, char *buffer, int length)
+{
+  timeout = 0;
+  alarm_n=2;
+  signal(SIGALRM, sigalrm_handler);
 
+  //alarm(linkLayer->timeout);
+  alarm(3);
+  printf("\naquii  3 \n\n");
 	while(STOP == FALSE)
 	{
-		//sendMessage(int fd, unsigned char* buf, int buf_size)
+      if(timeout >= 3) //TODO mudar para >= linkLayer->timeout)
+      {
+        printf("####### timeout tentativas");
+        STOP = TRUE;
+      }
 
+
+		//TODO sendMessage(int fd, unsigned char* buf, int buf_size)
+
+    //TODO ver a mensagem de volta e agir conforme resposta
+  }
+
+  printf("\n \n Saiu do ciclo \n");
 
 
   return 0;
@@ -198,6 +237,10 @@ int llread(int fd, char * buffer){
 
 
   return 0;
+}
+
+int calculateDataSize(int size){
+  return size-6;
 }
 
 int byteStuffing(char packet[], int size){
