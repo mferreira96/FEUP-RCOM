@@ -165,7 +165,7 @@ int llwrite(int fd, char *buffer, int length)
       }
 
 
-		//TODO sendMessage(int fd, unsigned char* buf, int buf_size)
+	//sendMessage(int fd, unsigned char* buf, int buf_size)
 
     //TODO ver a mensagem de volta e agir conforme resposta
   }
@@ -455,18 +455,16 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 	//Inserir o filesize
 	int i=0;
 	for(i; i < sizeof_filesize; i++)
-	{
 		controlPackage[3+i] = filesize[i];
-	}
+
 	int pos = 3+ sizeof_filesize;
 	controlPackage[pos] = PARAM_FILENAME;
 	controlPackage[++pos] = strlen(filename);
 	//inserir o filename
 	i=0;
 	for(i; i < strlen(filename); i++)
-	{
 		controlPackage[++pos] = filename[i];
-	}
+
 
 
 	//LLWRITE AQUI
@@ -474,3 +472,43 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 
 
 }
+
+
+void sendMessage(int fd, unsigned char* buf, int buf_size)
+{
+	unsigned char* message = createMessage(buf, buf_size);
+	buf_size = buf_size + (6 * sizeof(char));
+	buf_size = byteStuffing(message, buf_size);
+
+	int num;
+	num = write(fd, message, buf_size);
+	if(num != buf_size)
+	  printf("Error sending message \n");	
+
+	free(message);
+}
+
+unsigned char* createMessage(const unsigned char* buf, int buf_size)
+{
+	int msg_size = 6 * sizeof(char);
+	unsigned char* message = malloc(msg_size + buf_size);
+
+	unsigned char controlCamp = linkLayer->sequenceNumber << 6;
+	unsigned char BCC1 = A ^ controlCamp;
+	
+	unsigned char BCC2;
+	int i;
+	for(i = 0; i < buf_size; i++)
+	  BCC2 ^= buf[i];
+
+	message[0] = FLAG;
+	message[1] = A;
+	message[2] = controlCamp;
+	memcpy(&message[4], buf, buf_size);
+	message[4+buf_size] = BCC2;
+	message[5+buf_size] = FLAG;
+	
+	return message;
+}
+
+
