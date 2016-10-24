@@ -4,6 +4,8 @@ volatile int STOP=FALSE;
 volatile int SEND=TRUE;
 
 unsigned int counterNumOfAttempts;
+unsigned int timeout;
+unsigned int alarm_n;
 
 int contador=0;
 LinkLayer * linkLayer;
@@ -58,6 +60,7 @@ int setNewTermios(int fd){
 
 int llopen(char *port, int flagMode){
   int fd;
+  alarm_n=1;
 
   fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
   if (fd <0) {perror(port); exit(-1); }
@@ -113,23 +116,59 @@ Frame[19]=FLAG;
 }
 
 
-void sigalrm_handler(){
+void sigalrm_handler()
+{
+  if(alarm_n == 1)
+  {
   SEND = TRUE;
   counterNumOfAttempts++;
+  }
+  else if (alarm_n == 2)
+  {
+      timeout++;
+      printf("\n Timeout, llwrite n%d \n",timeout);
+
+        if(timeout >=linkLayer->timeout)
+          alarm(0);
+        else
+        alarm(linkLayer->timeout);
+
+  }
+  else
+    printf("\n erro alarm handler \n");
 }
 
 
 
-// send frame
-//TUDO ainda por acabar
-int llwrite(int fd, char *buffer, int length){
+//TODO ainda por acabar
+int llwrite(int fd, char *buffer, int length)
+{
+  timeout = 0;
+  alarm_n=2;
+  signal(SIGALRM, sigalrm_handler);
 
-	while(STOP == FALSE)
-	{
-		//sendMessage(int fd, unsigned char* buf, int buf_size)
+  alarm(linkLayer->timeout);
+  alarm(3);
+   while(STOP == FALSE)
+   {
+	//Se n tentativas >= num de timeout, parar
+      if(timeout >= linkLayer->timeout)
+      {
+        printf("####### timeout por tentativas");
+	return 1;
+      }
+	//Caso contrario tenta enviar
+      sendMessage(fd, buffer, length);
 
-}
 
+	//TODO ver a mensagem de volta
+	//N sei bem agr, se souberem melhor que eu, agradecia uma ajuda
+
+  }
+
+
+  //Parar alarm
+  printf("\n \n Saiu do ciclo \n");
   return 0;
 }
 
@@ -201,6 +240,10 @@ int llread(int fd, char * buffer){
   return 0;
 }
 
+int calculateDataSize(int size){
+  return size-6;
+}
+
 int byteStuffing(char packet[], int size){
   int i=0;
   for(i;i< size;i++){
@@ -229,7 +272,7 @@ int deByteStuffing(char packet[], int size){
 void setAndSendDisc(int fd){
   unsigned char DISC[5];
 
-  DISC[0]= FLAG;	
+  DISC[0]= FLAG;
   DISC[1]= A;
   DISC[2]= C_DISC;
   DISC[3]= A^C_DISC;
@@ -270,7 +313,7 @@ int llclose(int fd, int type){
 
 	switch(type){
 		case TRANSMITTER:
-			
+
 			while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 				if(SEND){
 					setAndSendDisc(fd);
@@ -282,19 +325,19 @@ int llclose(int fd, int type){
     			if(r > 0) {
         			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
         		  	pos++;
-        		}		
+        		}
 			}
-			
+
 			if(STOP == TRUE){
 				setAndSendUA(fd);
 			}
-			
+
 			if(counterNumOfAttempts == linkLayer->numTransmissions && STOP == FALSE){
 				perror("Number max of tries achieved");
 				exit(3);
 			}
-	
-		
+
+
 		break;
 		case RECEIVER:
  			 while(STOP == FALSE){
@@ -306,10 +349,10 @@ int llclose(int fd, int type){
 				}
 			  	printf("state %d \n", state);
 			  }
-			  
+
 			  if(STOP == TRUE){
 			  	STOP = FALSE;
-			  	SEND = TRUE; 
+			  	SEND = TRUE;
 			  	typeOfFrame = UA;
 			  	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 					if(SEND){
@@ -322,14 +365,14 @@ int llclose(int fd, int type){
 					if(r > 0) {
 						state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
 					  	pos++;
-					}		
+					}
 				}
 			  }
-		
-		
+
+
 		break;
 		}
-	
+
 
 	if(closeSerialPort(fd) != 0){
 		perror("serial port with problems");
@@ -338,7 +381,7 @@ int llclose(int fd, int type){
 	else{
 		printf("closed serial port successfully \n");
 	}
-	
+
 
   return 0;
 }
@@ -523,22 +566,56 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 	//Inserir o filesize
 	int i=0;
 	for(i; i < sizeof_filesize; i++)
-	{
 		controlPackage[3+i] = filesize[i];
-	}
+
 	int pos = 3+ sizeof_filesize;
 	controlPackage[pos] = PARAM_FILENAME;
 	controlPackage[++pos] = strlen(filename);
 	//inserir o filename
 	i=0;
 	for(i; i < strlen(filename); i++)
-	{
 		controlPackage[++pos] = filename[i];
-	}
 
 
-	//LLWRITE AQUI
-	
 
 
+
+}
+
+
+void sendMessage(int fd, unsigned char* buf, int buf_size)
+{
+	unsigned char* message = createMessage(buf, buf_size);
+	buf_size = buf_size + (6 * sizeof(char));
+	buf_size = byteStuffing(message, buf_size);
+
+	int num;
+	num = write(fd, message, buf_size);
+	if(num != buf_size)
+	  printf("Error sending message \n");
+
+	free(message);
+}
+
+unsigned char* createMessage(const unsigned char* buf, int buf_size)
+{
+	int msg_size = 6 * sizeof(char);
+	unsigned char* message = malloc(msg_size + buf_size);
+
+	unsigned char controlCamp = linkLayer->sequenceNumber << 6;
+	unsigned char BCC1 = A ^ controlCamp;
+
+	unsigned char BCC2;
+	int i;
+	for(i = 0; i < buf_size; i++)
+	  BCC2 ^= buf[i];
+
+	message[0] = FLAG;
+	message[1] = A;
+	message[2] = controlCamp;
+	memcpy(&message[4], buf, buf_size);
+	message[4+buf_size] = BCC2;
+	message[5+buf_size] = FLAG;
+
+	return message;
 }
