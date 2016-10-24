@@ -133,10 +133,10 @@ void sigalrm_handler()
       timeout++;
       printf("\n Timeout, llwrite n%d \n",timeout);
 
-        if(timeout >=3)//TODO mudar para linklayer...
+        if(timeout >=linkLayer->timeout)
           alarm(0);
         else
-        alarm(3); //TODO mufar para linklayer
+        alarm(linkLayer->timeout);
 
   }
   else
@@ -145,34 +145,35 @@ void sigalrm_handler()
 
 
 
-// send frame
-//TUDO ainda por acabar
+
+//TODO ainda por acabar
 int llwrite(int fd, char *buffer, int length)
 {
   timeout = 0;
   alarm_n=2;
   signal(SIGALRM, sigalrm_handler);
 
-  //alarm(linkLayer->timeout);
+  alarm(linkLayer->timeout);
   alarm(3);
-  printf("\naquii  3 \n\n");
-	while(STOP == FALSE)
-	{
-      if(timeout >= 3) //TODO mudar para >= linkLayer->timeout)
+   while(STOP == FALSE)
+   {
+	//Se n tentativas >= num de timeout, parar
+      if(timeout >= linkLayer->timeout)
       {
-        printf("####### timeout tentativas");
-        STOP = TRUE;
+        printf("####### timeout por tentativas");
+	return 1;
       }
+	//Caso contrario tenta enviar
+      sendMessage(fd, buffer, length);
 
-
-	//sendMessage(int fd, unsigned char* buf, int buf_size)
-
-    //TODO ver a mensagem de volta e agir conforme resposta
+    
+	//TODO ver a mensagem de volta
+	//N sei bem agr, se souberem melhor que eu, agradecia uma ajuda
+	
   }
 
+  //Parar alarm
   printf("\n \n Saiu do ciclo \n");
-
-
   return 0;
 }
 
@@ -467,7 +468,7 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 
 
 
-	//LLWRITE AQUI
+	//TODO LLWRITE AQUI
 	//llwrite(fd, controlPackage, packageSize);
 
 
@@ -510,5 +511,6 @@ unsigned char* createMessage(const unsigned char* buf, int buf_size)
 	
 	return message;
 }
+
 
 
