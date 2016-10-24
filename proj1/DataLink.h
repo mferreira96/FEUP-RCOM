@@ -35,7 +35,7 @@
 typedef struct {
   char port[20];
   int baudRate;
-  unsigned int sequenceNumber;
+  unsigned int sequenceNumber; //0 ou 1
   unsigned int timeout;
   unsigned int numTransmissions;
   char frame[MAX_FRAME_SIZE];
@@ -73,6 +73,8 @@ char blockCheckCharacter(char buffer[], int size);
 void sendControlPackage(int control, int fd, char* name, char* filesize);
 
 void sendMessage(int fd, unsigned char* buf, int buf_size);
+
+unsigned char* createMessage(const unsigned char* buf, int buf_size);
 
 int calculateDataSize(int size);
 
