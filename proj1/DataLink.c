@@ -128,10 +128,10 @@ void sigalrm_handler()
       timeout++;
       printf("\n Timeout, llwrite n%d \n",timeout);
 
-        if(timeout >=linkLayer->timeout)
+        if(timeout >=linkLayer->timeOut)
           alarm(0);
         else
-        alarm(linkLayer->timeout);
+        alarm(linkLayer->timeOut);
 
   }
   else
@@ -147,12 +147,12 @@ int llwrite(int fd, char *buffer, int length)
   alarm_n=2;
   signal(SIGALRM, sigalrm_handler);
 
-  alarm(linkLayer->timeout);
+  alarm(linkLayer->timeOut);
   alarm(3);
    while(STOP == FALSE)
    {
 	//Se n tentativas >= num de timeout, parar
-      if(timeout >= linkLayer->timeout)
+      if(timeout >= linkLayer->timeOut)
       {
         printf("####### timeout por tentativas");
 	return 1;
@@ -240,9 +240,6 @@ int llread(int fd, char * buffer){
   return 0;
 }
 
-int calculateDataSize(int size){
-  return size-6;
-}
 
 int byteStuffing(char packet[], int size){
   int i=0;

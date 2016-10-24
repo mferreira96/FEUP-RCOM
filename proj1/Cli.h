@@ -15,8 +15,8 @@
 #define BAUDRATE_115200 B115200
 
 
-#define TIMEOUT_DEFAULT
-#define NRETRIES_DEFAULT
+#define TIMEOUT_DEFAULT  3
+#define NRETRIES_DEFAULT 3
 
 
 void choosePort(char * name);
