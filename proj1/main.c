@@ -3,17 +3,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "DataLink.h"
+#include "applicationLayer.h"
 
 int  main(int argc, char** argv){
-////TESTE////TESTE////TESTE////TESTE////TESTE
-  char n[10];
-printf("\n aquii 0 \n");
-llwrite(1, &n, 1);
 
-//  printf("\n\n\n end end end \n\n\n");
-  ////TESTE ////TESTE ////TESTE ////TESTE
-  
   if(argc != 3){
     printf("Usage:./main flagMode");
     exit(1);
@@ -23,10 +16,10 @@ llwrite(1, &n, 1);
   int x;
   if(strcmp(argv[1], "0")==0){
     printf("TRANSMITTER\n");
-   x = llopen(argv[2],TRANSMITTER);
+   x =initAppLayer(argv[2],TRANSMITTER);//= llopen(argv[2],TRANSMITTER);
   }else{
     printf("RECIEVER\n");
-   x = llopen(argv[2],RECEIVER);
+   x = initAppLayer(argv[2],RECEIVER);//llopen(argv[2],RECEIVER);
  }
   if(x != 0){
     perror("Error on llopen");
@@ -37,4 +30,3 @@ llwrite(1, &n, 1);
   }
 
   return 0;
-}
