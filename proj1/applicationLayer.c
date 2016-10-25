@@ -87,6 +87,7 @@ int initAppLayer(char serialPort[], int type){
 		printf("Can't send start packet! \n");
 	}
 	printf("sent start packet! \n");
+	sendFile(application->fileDescriptor);
 	llclose(application->fileDescriptor,application->status);
     
   }
@@ -108,3 +109,47 @@ int initAppLayer(char serialPort[], int type){
   
   return 0;
 }
+
+int sendFile(int fd){
+	FILE *f = fopen("teste.txt","r");
+
+	if(f == NULL){
+		perror("Error openning file to send \n");
+		exit(1);
+	}
+
+    int size = 0;
+    char buffer[54];
+	int counter = 0;
+	char last[1];
+	buffer[0] = 1;
+
+	printf("vou começar a enviar \n");
+    while(1){
+		size = fread(buffer + 4,sizeof(char),BLOCK,f); 		
+		if(size <= 0){
+			break;			
+		}		
+		printf("size = %d \n",size);
+		buffer[1] = counter;
+		buffer[2] = 0;
+		buffer[3] = size;		
+		llwrite(fd, buffer,size + 4);	
+		
+		counter++;
+	}
+	printf("sai do ciclo sendFile \n");
+	last[0] = 3;
+
+	llwrite(fd, last, strlen(last));
+	printf("Enviei mensagem de terminação da trama de dados \n");
+	
+	 if(fclose(f)!= 0){
+		perror("error closing file to be sent\n");	
+		exit(2);
+	}
+
+	return 0;
+}
+
+
