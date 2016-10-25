@@ -36,6 +36,32 @@ int sendControlPacket(int i){
 return 0;
 }
 
+int readFile(){
+	int STOP=FALSE;
+	char * data;
+    data= (char *) malloc(100);
+    bzero(data,100);
+    while(STOP==FALSE){
+    	llread(application->fileDescriptor,data);
+    	if(data[0]==3)
+    		STOP=TRUE;
+    	else{
+    		printf("TESTE:  \n");
+    		int i=0;
+    		int size=0;
+    		printf("tamanho: %d \n",(int)(data[3]));
+    		for(i;i<(int)(data[3])+4;i++){
+    		printf("li isto: %c \n",data[i]);
+    		}
+    		
+    	}
+    	bzero(data,100);
+    }
+    
+    free(data);
+    return 0;
+}
+
 int initAppLayer(char serialPort[], int type){
 
   application = (applicationLayer *) malloc(sizeof(applicationLayer));
@@ -75,12 +101,10 @@ int initAppLayer(char serialPort[], int type){
 	if(receiveControlPacket()!=0){
 		printf("Can't receive start packet! \n");
 	}
+	readFile();
 	printf("received start packet! \n");
 	llclose(application->fileDescriptor,application->status);
   }
   
   return 0;
 }
-
-
-
