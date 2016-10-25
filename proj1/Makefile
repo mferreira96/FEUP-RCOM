@@ -1,7 +1,13 @@
-all: main 
+main: main.o applicationLayer.o DataLink.o
+	gcc -o main main.o applicationLayer.o DataLink.o
 
-main: main.c DataLink.c
-	gcc -o bin/main main.c DataLink.c Cli.c -Wall
+main.o: main.c
+	gcc -c main.c
 
-clean:
-		rm -f bin/main
+applicationLayer.o: applicationLayer.c
+	gcc -c applicationLayer.c
+
+DataLink.o: DataLink.c
+	gcc -c DataLink.c
+
+
