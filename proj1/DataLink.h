@@ -47,7 +47,9 @@ typedef enum{
 	SET = 0,
 	UA = 1,
 	INF = 2,
-	DISC = 3
+	DISC = 3,
+  	RR = 4,
+  	REJ = 5
 }TypeOfFrame;
 
 extern LinkLayer* linkLayer;
