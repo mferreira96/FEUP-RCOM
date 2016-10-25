@@ -222,6 +222,7 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
       }
 		printf("state %d \n", state);
 	}
+	printf("saiiiiiiiiii\n");
 	return pos;
 }
 
@@ -259,7 +260,7 @@ int llread(int fd, char * data){
   memcpy(data,&buffer[4],calculateDataSize(pos));
 
 
-	if(blockCheckCharacter(data,14)!=buffer[pos-2]){
+	if(blockCheckCharacter(data,calculateDataSize(pos))!=buffer[pos-2]){
     printf("recebi mal o bcc2\n");
     send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
     printf("alalal %c", send[2]);
@@ -404,6 +405,7 @@ int llclose(int fd, int type){
 			  if(STOP == TRUE){
 			  	STOP = FALSE;
 			  	SEND = TRUE; 
+			  	bzero(tmp,5);
 			  	typeOfFrame = UA;
 			  	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 					if(SEND){
@@ -411,12 +413,14 @@ int llclose(int fd, int type){
 						alarm(linkLayer->timeOut);
 						SEND = FALSE;
 					}
+					readingCycle(typeOfFrame,tmp,fd);
+					/*printf("fd = %d \n",fd);
 					r =  read(fd,t,1);
-			 		printf("c =  %c \n", t[0]);
+			 		printf("o c errado =  %c \n", t[0]);
 					if(r > 0) {
 						state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
 					  	pos++;
-					}		
+					}*/		
 				}
 			  }
 		
@@ -440,8 +444,9 @@ int llclose(int fd, int type){
 char blockCheckCharacter(char buffer[], int size){
 	int i=0;
 	int bcc2=0;
-
+	printf("vou fazer check no bcc2 \n");
 	for(i;i<size;i++){
+		printf("estou a ler %i  ::%c \n",bcc2,buffer[i] );
 		bcc2=bcc2^buffer[i];
 	}
 	return bcc2;
