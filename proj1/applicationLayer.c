@@ -1,4 +1,8 @@
-#include "applicationLayer.h"
+#include <fcntl.h>
+
+int fd; 
+
+int createfile(char* fileName);
 
 int receiveControlPacket(){
 
@@ -12,11 +16,34 @@ int receiveControlPacket(){
 	sscanf(fileSize,"%X",&size);
 	char *fileName=malloc(sizeof(char)*20);
 	memcpy(fileName,&data[9],(int)data[8]);
-	printf("file size is: %d",size);
-	printf("file name is: %s",fileName);
-    free(data);
+	printf("file size is: %d \n",size);
+	printf("file name is: %s \n",fileName);
+		
+	fd = createfile(fileName);
+	
+   	 free(data);
 	free(fileName);
 	return 0;
+}
+
+int createfile(char* fileName)
+{
+
+	int fdNew; 
+	
+	fdNew = open(fileName,O_CREAT|O_WRONLY | O_APPEND |O_TRUNC);
+	if (fdNew == -1)
+	{
+		perror("Error creating file!");
+		exit(1);
+	}
+	return fdNew;
+	
+}
+
+void writeOnFile(char * data){
+	int size = write(fd, data + 4,(int)data[3]);	
+	printf("eu escrevi %d \n", sizeof(&data));
 }
 
 int sendControlPacket(int i){
@@ -29,8 +56,8 @@ int sendControlPacket(int i){
 	data[2]=4;
 	memmove(data+3,size,4);
 	data[7]=1;
-	data[8]=strlen("ONOME");
-	memmove(data+9,"ONOME",5);
+	data[8]=strlen("teste.txt");
+	memmove(data+9,"teste.txt",5);
 
 	llwrite(application->fileDescriptor,data,14);
 return 0;
@@ -46,6 +73,7 @@ int readFile(){
     	if(data[0]==3)
     		STOP=TRUE;
     	else{
+    		writeOnFile(data);
     		printf("TESTE:  \n");
     		int i=0;
     		int size=0;
