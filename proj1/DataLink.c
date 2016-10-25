@@ -4,12 +4,12 @@ volatile int STOP=FALSE;
 volatile int SEND=TRUE;
 
 unsigned int counterNumOfAttempts;
-unsigned int timeout;
-unsigned int alarm_n;
 
 int contador=0;
 LinkLayer * linkLayer;
 TypeOfFrame typeOfFrame;
+unsigned int timeout;
+unsigned int alarm_n;
 
 
 
@@ -22,6 +22,7 @@ int configLinkLayer(int flagMode){
   linkLayer->numTransmissions = 3;
   linkLayer->baudRate = BAUDRATE;
   linkLayer->timeOut = 3;
+  linkLayer->sequenceNumber=0;
 
   return 1;
 
@@ -57,65 +58,6 @@ int setNewTermios(int fd){
   return 0;
 }
 
-/*
-int llopen(char *port, int flagMode){
-  int fd;
-  alarm_n=1;
-
-  fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
-  if (fd <0) {perror(port); exit(-1); }
-
-  if (setNewTermios(fd) != 0){            // set new termios
-    perror("Error setting new termios");
-    exit(2);
-  }
-
-  signal(SIGALRM, sigalrm_handler);       //sigalrm_handler is the function  called when the alarm is fired
-  printf("cheguei aqui \n");
-  int error;
-  if(flagMode == TRANSMITTER){
-    error = connectTransmitter(fd); // Transmitter try to stablish communication
-
-char tamanho[4];
-sprintf(tamanho,"%ld",500);
-printf("tamanho : %s \n",tamanho);
-    char Frame[20];
-	Frame[0]=FLAG;
-Frame[1]=A;
-Frame[2]=contador;
-Frame[3]=Frame[1]^Frame[2];
-Frame[4]=2;
-Frame[5]=0;
-Frame[6]=4;
-printf("cheguei aqui \n");
-memmove(Frame+7,tamanho,4);
-printf("cheguei aqui \n");
-Frame[11]=1;
-Frame[12]=strlen("ONOME");
-memmove(Frame+13,"ONOME",5);
-Frame[18]= blockCheckCharacter(&Frame[4],14);
-Frame[19]=FLAG;
-
-	write(fd,Frame,20);
-  }
-  else{
-    error = connectReciever(fd);    //Reciever try to stablish communication
-    char * buffer;
-    buffer= (char *) malloc(50);
-    llread(fd,buffer);
-    free(buffer);
-  }
-
-  if(error == -1){
-    perror("Error trying to stablish communication");
-    exit(1);
-  }
-
-
-  return 0;
-}
-
-*/
 
 int llopen(int fd, int flagMode){
   /*int fd;
@@ -198,7 +140,6 @@ void sigalrm_handler(){
 
 
 
-
 // send frame
 //TUDO ainda por acabar
 int llwrite(int fd, char *buffer, int length){
@@ -217,7 +158,7 @@ unsigned char t[1];
   STOP=FALSE;
 typeOfFrame=RR;
 unsigned char tmp[5];
-	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP ==FALSE){
+	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 		if(SEND){
 			//setAndSendDisc(fd);
 			printf("enviei istoooo \n");
@@ -249,6 +190,7 @@ unsigned char tmp[5];
 
   return 0;
 }
+
 //return size of data in frame
 int calculateDataSize(int size){
 	return size-6;
@@ -283,10 +225,7 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 	return pos;
 }
 
-
-
-
-/// recieve frame
+// recieve frame
 int llread(int fd, char * data){
 	typeOfFrame = INF;
 	char * buffer;
@@ -352,7 +291,6 @@ free(buffer);
   return 0;
 }
 
-
 int byteStuffing(char packet[], int size){
   int i=0;
   for(i;i< size;i++){
@@ -381,7 +319,7 @@ int deByteStuffing(char packet[], int size){
 void setAndSendDisc(int fd){
   unsigned char DISC[5];
 
-  DISC[0]= FLAG;
+  DISC[0]= FLAG;	
   DISC[1]= A;
   DISC[2]= C_DISC;
   DISC[3]= A^C_DISC;
@@ -419,10 +357,11 @@ int llclose(int fd, int type){
 	int state = 0;
 	unsigned char tmp[5];
 	int pos=0;
-
+	STOP=FALSE;
+	SEND=TRUE;
 	switch(type){
 		case TRANSMITTER:
-
+			
 			while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 				if(SEND){
 					setAndSendDisc(fd);
@@ -433,22 +372,25 @@ int llclose(int fd, int type){
      			printf("c =  %c \n", t[0]);
     			if(r > 0) {
         			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
+					printf("state =  %d \n", state);
         		  	pos++;
-        		}
+        		}		
 			}
-
+			
 			if(STOP == TRUE){
 				setAndSendUA(fd);
 			}
-
+			
 			if(counterNumOfAttempts == linkLayer->numTransmissions && STOP == FALSE){
 				perror("Number max of tries achieved");
 				exit(3);
 			}
-
-
+	
+		
 		break;
 		case RECEIVER:
+	
+				readingCycle(typeOfFrame,tmp,fd);
  			/* while(STOP == FALSE){
 			  	r =  read(fd,t,1);
 			  	printf("c =  %c \n", t[0]);
@@ -458,10 +400,10 @@ int llclose(int fd, int type){
 				}
 			  	printf("state %d \n", state);
 			  }*/
-
+			  
 			  if(STOP == TRUE){
 			  	STOP = FALSE;
-			  	SEND = TRUE;
+			  	SEND = TRUE; 
 			  	typeOfFrame = UA;
 			  	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 					if(SEND){
@@ -474,14 +416,14 @@ int llclose(int fd, int type){
 					if(r > 0) {
 						state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
 					  	pos++;
-					}
+					}		
 				}
 			  }
-
-
+		
+		
 		break;
 		}
-
+	
 
 	if(closeSerialPort(fd) != 0){
 		perror("serial port with problems");
@@ -490,7 +432,7 @@ int llclose(int fd, int type){
 	else{
 		printf("closed serial port successfully \n");
 	}
-
+	
 
   return 0;
 }
@@ -538,9 +480,10 @@ int connectTransmitter(int fd){
 }
 
 
-int connectReciever(int fd){
+int connectReciever(int fd){ //receiver esta mal escrito
 typeOfFrame = SET;
 unsigned char tmp[5];
+readingCycle(typeOfFrame,tmp,fd);
 /*unsigned char t[1];
 int state = 0;
 int r = 0;
@@ -598,7 +541,6 @@ void setAndSendUA(int fd){
     perror("Error sending UA");
   }
 }
-
 
 //tyoe 0->SET, 1->UA, 2->INF, 3->DISC acrescentar as q faltam e substituir por um enum
 int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos){
@@ -659,6 +601,7 @@ int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos
 	return state;
 }
 
+
 void sendControlPackage(int control, int fd, char* filename, char* filesize)
 {
 
@@ -675,23 +618,23 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 	//Inserir o filesize
 	int i=0;
 	for(i; i < sizeof_filesize; i++)
+	{
 		controlPackage[3+i] = filesize[i];
-
+	}
 	int pos = 3+ sizeof_filesize;
 	controlPackage[pos] = PARAM_FILENAME;
 	controlPackage[++pos] = strlen(filename);
 	//inserir o filename
 	i=0;
 	for(i; i < strlen(filename); i++)
+	{
 		controlPackage[++pos] = filename[i];
+	}
 
 
+	//LLWRITE AQUI
 
-
-
-}
-
-
+}	
 void sendMessage(int fd, unsigned char* buf, int buf_size)
 {
 	unsigned char* message = createMessage(buf, buf_size);
@@ -729,4 +672,3 @@ unsigned char* createMessage(const unsigned char* buf, int buf_size)
 
 	return message;
  }
-
