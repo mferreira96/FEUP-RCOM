@@ -44,7 +44,8 @@ void writeOnFile(char * data){
 	int L2 = (int)data[2];
 	int L1 = (int)data[3];
 	int size = 256 * L2 + L1;
-	write(fd, data + 4,size);
+	write(fd, data + 4,size);	
+	//printf("eu escrevi %d \n", sizeof(&data));
 }
 
 int sendControlPacket(int i){
@@ -71,19 +72,13 @@ int readFile(){
     data= (char *) malloc(100);
     bzero(data,100);
     while(STOP==FALSE){
-    	llread(application->fileDescriptor,data);
-    	if(data[0]==3)
+    	int value=llread(application->fileDescriptor,data);
+		
+    	if(data[0]==3 && value!=-1)
     		STOP=TRUE;
-    	else{
-    		writeOnFile(data);
-    		printf("TESTE:  \n");
-    		/*int i=0;
-    		int size=0;
-    		printf("tamanho: %d \n",(int)(data[3]));
-    		for(i;i<(int)(data[3])+4;i++){
-    		printf("li isto: %c \n",data[i]);
-    		}*/
-    		
+    	else if(value!=-1){
+printf("data %d \n",data[1]);
+    		writeOnFile(data); 		
     	}
     	bzero(data,100);
     }
@@ -132,8 +127,9 @@ int initAppLayer(char serialPort[], int type){
 	if(receiveControlPacket()!=0){
 		printf("Can't receive start packet! \n");
 	}
+printf("received start packet! \n");
 	readFile();
-	printf("received start packet! \n");
+	
 	llclose(application->fileDescriptor,application->status);
   }
   
