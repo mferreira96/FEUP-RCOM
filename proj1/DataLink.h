@@ -84,7 +84,7 @@ void sendControlPackage(int control, int fd, char* name, char* filesize);
 
 void sendMessage(int fd, unsigned char* buf, int buf_size);
 
-unsigned char* createMessage(const unsigned char* buf, int buf_size);
+int createMessage(const unsigned char* buf,unsigned char* message, int buf_size);
 
 int calculateDataSize(int size);
 
