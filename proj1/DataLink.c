@@ -97,19 +97,19 @@ void sigalrm_handler(){
 int llwrite(int fd, char *buffer, int length){
 
 	 timeout = 0;
-  alarm_n=2;
-  //signal(SIGALRM, sigalrm_handler);  so se precisa de instalar o alarme uma vez...
+  	alarm_n=2;
+  	//signal(SIGALRM, sigalrm_handler);  so se precisa de instalar o alarme uma vez...
 
 	SEND=TRUE;
 	//sendMessage(fd, buffer, length);
 
-unsigned char t[1];
+	unsigned char t[1];
 	int state = 0;
 	int r = 0;
-  int pos=0;
-  STOP=FALSE;
-typeOfFrame=RR;
-unsigned char tmp[5];
+ 	int pos=0;
+ 	STOP=FALSE;
+	typeOfFrame=RR;
+	unsigned char tmp[5];
 	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 		if(SEND){
 			printf("enviei istoooo \n");
@@ -157,22 +157,25 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 	unsigned char t[1];
 	int state = 0;
 	int r = 0;
-  int pos=0;
-  STOP=FALSE;
-alarm(9);
+  	int pos=0;
+  	STOP=FALSE;
+	alarm(9);
 	while(STOP == FALSE){
 		r =  read(fd,t,1);
-		//printf("c =  %c \n", t[0]);
+		
 		if(r > 0)
 			{
+		printf("c =  %c \n", t[0]);
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
         pos++;
+		printf("state %d \n", state);
       }
-		//printf("state %d \n", state);
+		
 	}
-	if(state != 4){
-				perror("Lost connection to sender \n");
-				exit(3);
+	
+	if(state != 4 || buffer[pos-1]!=FLAG){
+		perror("Lost connection to sender \n");
+		exit(3);
 	}
 	alarm(0);
 	counterNumOfAttempts=0;
@@ -189,23 +192,30 @@ int llread(int fd, char * data){
 	char send[5];
 	send[0]=FLAG;
 	send[1]=A;
-  int i=0;
+	/*int i=0;
+	for(i;i<pos;i++){
+		printf("recebi istooo %c \n",buffer[i]);	
+	}*/
+	
+  	memcpy(data,&buffer[4],pos-6);
+	int correctSize =  deByteStuffing(data,pos-6);
+	
+	//sleep(4);
 
-  memcpy(data,&buffer[4],calculateDataSize(pos));
-
-
-	if(blockCheckCharacter(data,calculateDataSize(pos))!=buffer[pos-2]){
-    send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
+	if(blockCheckCharacter(data,correctSize)!=buffer[pos-2]){
+		printf("bcc2 = %d:::o q recebe= %d \n",blockCheckCharacter(data,correctSize),buffer[pos-2]);
+    	send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
 	}
-  else if((buffer[2])!=(linkLayer->sequenceNumber << 6)){
-    printf("recebi repetido %c %c \n",(buffer[2]),(linkLayer->sequenceNumber << 6));
-    if(linkLayer->sequenceNumber==0)
-      send[2]=(0<<7)+C_RR;
-    else
-      send[2]=(1<<7)+C_RR;
+  	else if((buffer[2])!=(linkLayer->sequenceNumber << 6)){
+  	  printf("recebi repetido %c %c \n",(buffer[2]),(linkLayer->sequenceNumber << 6));
+  
+  		if(linkLayer->sequenceNumber==0)
+      		send[2]=(0<<7)+C_RR;
+    	else
+      		send[2]=(1<<7)+C_RR;
 
-    printf("alalal %c \n", send[2]);
-  }
+   		 printf("alalal %c \n", send[2]);
+ 	}
   else{
     printf("recebi\n");
     if(linkLayer->sequenceNumber==0)
@@ -223,6 +233,7 @@ int llread(int fd, char * data){
 free(buffer);
   return 0;
 }
+
 
 int byteStuffing(char packet[], int size){
   int i=0;
@@ -248,6 +259,8 @@ int deByteStuffing(char packet[], int size){
   }
   return size;
 }
+
+
 
 void setAndSendDisc(int fd){
   unsigned char DISC[5];
@@ -547,38 +560,39 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 }	
 void sendMessage(int fd, unsigned char* buf, int buf_size)
 {
-	unsigned char* message = createMessage(buf, buf_size);
-	buf_size = buf_size + (6 * sizeof(char));
-	//buf_size = byteStuffing(message, buf_size); vamos tentar enviar 1ยบ sem bytestuffing
-
+	unsigned char* message = (char*)malloc(100);//createMessage(buf, buf_size);
+	//buf_size = buf_size + (6 * sizeof(char));
+	//buf_size = byteStuffing(message, buf_size); //vamos tentar enviar 1ยบ sem bytestuffing
+	int size=createMessage(buf,message, buf_size);
 	int num;
-	num = write(fd, message, buf_size);
-	if(num != buf_size)
+	num = write(fd, message, size);
+	if(num != size)
 	  printf("Error sending message \n");
 
 	free(message);
 }
 
-unsigned char* createMessage(const unsigned char* buf, int buf_size)
+int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 {
 	int msg_size = 6 * sizeof(char);
-	unsigned char* message = malloc(msg_size + buf_size);
+	//unsigned char* message = malloc(msg_size + buf_size);
 
 	unsigned char controlCamp = linkLayer->sequenceNumber << 6;
 	unsigned char BCC1 = A ^ controlCamp;
-
-	unsigned char BCC2;
+	char BCC2=blockCheckCharacter(&buf[0],buf_size);
+	/*unsigned char BCC2;
 	int i;
 	for(i = 0; i < buf_size; i++)
-	  BCC2 ^= buf[i]; //eu ja tinha criado uma funcao q fazia isto...
+	  BCC2 ^= buf[i]; //eu ja tinha criado uma funcao q fazia isto...*/
 
 	message[0] = FLAG;
 	message[1] = A;
 	message[2] = controlCamp;
 	message[3] = A^controlCamp;
-	memcpy(&message[4], buf, buf_size);
-	message[4+buf_size] = blockCheckCharacter(&buf[0],buf_size);;
-	message[5+buf_size] = FLAG;
+	int newSize = byteStuffing(buf, buf_size);
+	memcpy(&message[4], buf, newSize);
+	message[4+newSize] = BCC2;
+	message[5+newSize] = FLAG;
 
-	return message;
+	return newSize+6;
  }
