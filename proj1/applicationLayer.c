@@ -41,8 +41,10 @@ int createfile(char* fileName)
 }
 
 void writeOnFile(char * data){
-	int size = write(fd, data + 4,(int)data[3]);	
-	//printf("eu escrevi %d \n", sizeof(&data));
+	int L2 = (int)data[2];
+	int L1 = (int)data[3];
+	int size = 256 * L2 + L1;
+	write(fd, data + 4,size);
 }
 
 int sendControlPacket(int i){
@@ -160,8 +162,8 @@ int sendFile(int fd){
 		}		
 		printf("size = %d \n",size);
 		buffer[1] = counter;
-		buffer[2] = 0;
-		buffer[3] = size;		
+		buffer[2] = size / 256;
+		buffer[3] = size % 256;		
 		llwrite(fd, buffer,size + 4);	
 		
 		counter++;
