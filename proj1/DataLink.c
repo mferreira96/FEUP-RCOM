@@ -112,7 +112,7 @@ int llwrite(int fd, char *buffer, int length){
 	unsigned char tmp[5];
 	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 		if(SEND){
-			printf("enviei istoooo \n");
+			//printf("enviei istoooo \n");
 			sendMessage(fd, buffer, length);
 			alarm(linkLayer->timeOut);
 			SEND = FALSE;
@@ -125,7 +125,7 @@ int llwrite(int fd, char *buffer, int length){
 		if(pos==5){
 			if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_RR))||(tmp[2]==((linkLayer->sequenceNumber<<7)+C_REJ))){
 				printf("Receiver receives same or wrong. send again! \n");
-				SEND=FALSE;
+				SEND=TRUE;
 				STOP=FALSE;
 				pos=0;
 			}
@@ -165,18 +165,19 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 		
 		if(r > 0)
 			{
-		printf("c =  %c \n", t[0]);
+		//printf("c =  %c \n", t[0]);
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
         pos++;
-		printf("state %d \n", state);
+		//printf("state %d \n", state);
       }
 		
 	}
-	
+	//printf("teste %d \n", pos);
 	if(state != 4 || buffer[pos-1]!=FLAG){
 		perror("Lost connection to sender \n");
 		exit(3);
 	}
+	//printf("passei teste %d \n", state);
 	alarm(0);
 	counterNumOfAttempts=0;
 	return pos;
@@ -199,39 +200,51 @@ int llread(int fd, char * data){
 	
   	memcpy(data,&buffer[4],pos-6);
 	int correctSize =  deByteStuffing(data,pos-6);
-	
-	//sleep(4);
+	int flagMal=0;
+
 
 	if(blockCheckCharacter(data,correctSize)!=buffer[pos-2]){
-		printf("bcc2 = %d:::o q recebe= %d \n",blockCheckCharacter(data,correctSize),buffer[pos-2]);
+		//printf("bcc2 = %d:::o q recebe= %d \n",blockCheckCharacter(data,correctSize),buffer[pos-2]);
     	send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
-		tcflush(fd, TCIOFLUSH);
+		sleep(2);
+tcflush(fd, TCIOFLUSH);
+flagMal=1;
+		/*char oi[1024];
+		int li=read(fd,oi,1024);
+		for(i;i<li;i++){
+			printf("recebi istooo %c \n",oi[i]);	
+		}
+		printf("liiiiiiii= %d \n",li);*/
 	}
   	else if((buffer[2])!=(linkLayer->sequenceNumber << 6)){
-  	  printf("recebi repetido %c %c \n",(buffer[2]),(linkLayer->sequenceNumber << 6));
-  
+  	  //printf("recebi repetido %c %c \n",(buffer[2]),(linkLayer->sequenceNumber << 6));
+  		flagMal=1;
   		if(linkLayer->sequenceNumber==0)
       		send[2]=(0<<7)+C_RR;
     	else
       		send[2]=(1<<7)+C_RR;
 
-   		 printf("alalal %c \n", send[2]);
+   		 //printf("alalal %c \n", send[2]);
  	}
   else{
-    printf("recebi\n");
+    //printf("recebi\n");
     if(linkLayer->sequenceNumber==0)
       linkLayer->sequenceNumber=1;
     else
       linkLayer->sequenceNumber=0;
     send[2]=(linkLayer->sequenceNumber<<7)+C_RR;
-    printf("alalal %c \n", send[2]);
+    //printf("alalal %c \n", send[2]);
   }
 	send[3]=send[1]^send[2];
 	send[4]=FLAG;
-
   write(fd,send,5);
-
+if(flagMal)
+{
 free(buffer);
+return -1;
+}
+free(buffer);
+
   return 0;
 }
 
@@ -426,7 +439,7 @@ typeOfFrame = SET;
 unsigned char tmp[5];
 readingCycle(typeOfFrame,tmp,fd);
 
-  	printf("tmp[0] = %c , tmp[1] = %c, tmp[2] = %c , tmp[3] = %c , tmp[4] = %c \n" , tmp[0], tmp[1], tmp[2], tmp[3], tmp[4]);
+  //	printf("tmp[0] = %c , tmp[1] = %c, tmp[2] = %c , tmp[3] = %c , tmp[4] = %c \n" , tmp[0], tmp[1], tmp[2], tmp[3], tmp[4]);
 
     if(STOP == TRUE){
       setAndSendUA(fd);
@@ -566,6 +579,7 @@ void sendMessage(int fd, unsigned char* buf, int buf_size)
 	//buf_size = byteStuffing(message, buf_size); //vamos tentar enviar 1ยบ sem bytestuffing
 	int size=createMessage(buf,message, buf_size);
 	int num;
+	tcflush(fd,TCIOFLUSH);
 	num = write(fd, message, size);
 	if(num != size)
 	  printf("Error sending message \n");
