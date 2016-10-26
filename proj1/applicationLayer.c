@@ -1,12 +1,11 @@
 #include <fcntl.h>
-
+#include "applicationLayer.h"
 int fd; 
 
 int createfile(char* fileName);
 
 int receiveControlPacket(){
 
-	printf("pedir control packet \n");
 	char * data;
     data= (char *) malloc(100);
     llread(application->fileDescriptor,data);
@@ -43,23 +42,24 @@ int createfile(char* fileName)
 
 void writeOnFile(char * data){
 	int size = write(fd, data + 4,(int)data[3]);	
-	printf("eu escrevi %d \n", sizeof(&data));
+	//printf("eu escrevi %d \n", sizeof(&data));
 }
 
 int sendControlPacket(int i){
 	char size[4];
 	sprintf(size,"%x",500);
 	printf("TAMANHO : %X \n",500);
-	char data[14];
+	char *data = (char*)malloc(50);
 	data[0]=i;
 	data[1]=0;
 	data[2]=4;
 	memmove(data+3,size,4);
 	data[7]=1;
 	data[8]=strlen("teste.txt");
-	memmove(data+9,"teste.txt",5);
+	memmove(data+9,"teste.txt",(int)data[8]);
 
-	llwrite(application->fileDescriptor,data,14);
+	llwrite(application->fileDescriptor,data,9+(int)data[8]);
+	free(data);
 return 0;
 }
 
@@ -75,12 +75,12 @@ int readFile(){
     	else{
     		writeOnFile(data);
     		printf("TESTE:  \n");
-    		int i=0;
+    		/*int i=0;
     		int size=0;
     		printf("tamanho: %d \n",(int)(data[3]));
     		for(i;i<(int)(data[3])+4;i++){
     		printf("li isto: %c \n",data[i]);
-    		}
+    		}*/
     		
     	}
     	bzero(data,100);
