@@ -44,7 +44,7 @@ int setNewTermios(int fd){
   linkLayer->newtio.c_lflag = 0;
 
   linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-  linkLayer->newtio.c_cc[VMIN]     = 1;   /* blocking read until 1 chars received */
+  linkLayer->newtio.c_cc[VMIN]     = 0;   /* blocking read until 1 chars received */
 
 
 
@@ -60,50 +60,15 @@ int setNewTermios(int fd){
 
 
 int llopen(int fd, int flagMode){
-  /*int fd;
-
-  fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
-  if (fd <0) {perror(port); exit(-1); }
-
-  if (setNewTermios(fd) != 0){            // set new termios
-    perror("Error setting new termios");
-    exit(2);
-  }*/
 	alarm_n=1;
   signal(SIGALRM, sigalrm_handler);       //sigalrm_handler is the function  called when the alarm is fired
   printf("cheguei aqui \n");
   int error;
   if(flagMode == TRANSMITTER){
     error = connectTransmitter(fd); // Transmitter try to stablish communication
-
-/*char tamanho[4];
-sprintf(tamanho,"%ld",500);
-printf("tamanho : %s \n",tamanho);
-    char Frame[20];
-	Frame[0]=FLAG;
-Frame[1]=A;
-Frame[2]=contador;
-Frame[3]=Frame[1]^Frame[2];
-Frame[4]=2;
-Frame[5]=0;
-Frame[6]=4;
-printf("cheguei aqui \n");
-memmove(Frame+7,tamanho,4);
-printf("cheguei aqui \n");
-Frame[11]=1;
-Frame[12]=strlen("ONOME");
-memmove(Frame+13,"ONOME",5);
-Frame[18]= blockCheckCharacter(&Frame[4],14);
-Frame[19]=FLAG;
-
-	write(fd,Frame,20);*/
   }
   else{
     error = connectReciever(fd);    //Reciever try to stablish communication
-    /*char * buffer;
-    buffer= (char *) malloc(50);
-    llread(fd,buffer);
-    free(buffer);*/
   }
 
   if(error == -1){
@@ -117,25 +82,12 @@ Frame[19]=FLAG;
 
 
 void sigalrm_handler(){
-  
-  if(alarm_n == 1)
-  {
-   SEND = TRUE;
-   counterNumOfAttempts++;
-  }
-  else if (alarm_n == 2)
-  {
-      timeout++;
-      printf("\n Timeout, llwrite n%d \n",timeout);
-
-        /*if(timeout >=linkLayer->timeout)
-          alarm(0);
-        else
-        alarm(linkLayer->timeout);*/ //ta a dar erro de compilacao...
-
-  }
-  else
-    printf("\n erro alarm handler \n");
+	printf("Alarm shot!! \n");
+	if(SEND==TRUE||counterNumOfAttempts == linkLayer->numTransmissions){
+	 STOP=TRUE;
+	}
+	else SEND=TRUE;
+	counterNumOfAttempts++;
 }
 
 
@@ -160,15 +112,13 @@ typeOfFrame=RR;
 unsigned char tmp[5];
 	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 		if(SEND){
-			//setAndSendDisc(fd);
 			printf("enviei istoooo \n");
 			sendMessage(fd, buffer, length);
 			alarm(linkLayer->timeOut);
 			SEND = FALSE;
 		}
 		r =  read(fd,t,1);
-		printf("c =  %c \n", t[0]);
-		if(r > 0) {
+				if(r > 0) {
 			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
 			pos++;
 		}
@@ -186,8 +136,15 @@ unsigned char tmp[5];
 			}
 		}		
 	}
-  printf("\n \n Saiu do ciclo \n");
-
+	if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+	if(linkLayer->sequenceNumber==0)
+		linkLayer->sequenceNumber=1;
+	else linkLayer->sequenceNumber=0;
+	alarm(0);
+	counterNumOfAttempts=0;
   return 0;
 }
 
@@ -196,33 +153,29 @@ int calculateDataSize(int size){
 	return size-6;
 }
 
-/*int sendFile(int fd){
-	FILE *f=fopen("teste.txt","r");
-    int size;
-    char buffer[50];
-    // ...
-    while((size=fread(buffer,BLOCK,sizeof(char),f)>0)
-            //fwrite(buffer,size,sizeof(char),stdout); chamar llwrite
-    fclose(f);
-}*/
-
 int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 	unsigned char t[1];
 	int state = 0;
 	int r = 0;
   int pos=0;
   STOP=FALSE;
+alarm(9);
 	while(STOP == FALSE){
 		r =  read(fd,t,1);
-		printf("c =  %c \n", t[0]);
+		//printf("c =  %c \n", t[0]);
 		if(r > 0)
 			{
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
         pos++;
       }
-		printf("state %d \n", state);
+		//printf("state %d \n", state);
 	}
-	printf("saiiiiiiiiii\n");
+	if(state != 4){
+				perror("Lost connection to sender \n");
+				exit(3);
+	}
+	alarm(0);
+	counterNumOfAttempts=0;
 	return pos;
 }
 
@@ -232,41 +185,20 @@ int llread(int fd, char * data){
 	char * buffer;
     buffer= (char *) malloc(100);
 	int pos=readingCycle(typeOfFrame,buffer,fd);
-	/*unsigned char t[1];
-	int state = 0;
-	int r = 0;
-  int pos=0;
-	STOP=FALSE;
-	while(STOP == FALSE){
-		r =  read(fd,t,1);
-		printf("c =  %c \n", t[0]);
-		if(r > 0)
-			{
-        state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
-        pos++;
-      }
-		printf("state %d \n", state);
-	}*/
+	 	
 	char send[5];
 	send[0]=FLAG;
 	send[1]=A;
   int i=0;
 
-  char counter[1];
-//  sprintf(counter,"%d",contador);
- // char *data;
- // data= (char *) malloc(50);
-
   memcpy(data,&buffer[4],calculateDataSize(pos));
 
 
 	if(blockCheckCharacter(data,calculateDataSize(pos))!=buffer[pos-2]){
-    printf("recebi mal o bcc2\n");
     send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
-    printf("alalal %c", send[2]);
 	}
   else if((buffer[2])!=(linkLayer->sequenceNumber << 6)){
-    printf("recebi repetido \n");
+    printf("recebi repetido %c %c \n",(buffer[2]),(linkLayer->sequenceNumber << 6));
     if(linkLayer->sequenceNumber==0)
       send[2]=(0<<7)+C_RR;
     else
@@ -370,37 +302,31 @@ int llclose(int fd, int type){
 					SEND = FALSE;
 				}
 				r =  read(fd,t,1);
-     			printf("c =  %c \n", t[0]);
     			if(r > 0) {
         			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-					printf("state =  %d \n", state);
-        		  	pos++;
+					pos++;
         		}		
 			}
+
+			if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+
+			alarm(0);
+			counterNumOfAttempts=0;
 			
 			if(STOP == TRUE){
 				setAndSendUA(fd);
 			}
 			
-			if(counterNumOfAttempts == linkLayer->numTransmissions && STOP == FALSE){
-				perror("Number max of tries achieved");
-				exit(3);
-			}
+		
 	
 		
 		break;
 		case RECEIVER:
 	
 				readingCycle(typeOfFrame,tmp,fd);
- 			/* while(STOP == FALSE){
-			  	r =  read(fd,t,1);
-			  	printf("c =  %c \n", t[0]);
-			  	if(r > 0){
-				 state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-				 pos++;
-				}
-			  	printf("state %d \n", state);
-			  }*/
 			  
 			  if(STOP == TRUE){
 			  	STOP = FALSE;
@@ -413,16 +339,15 @@ int llclose(int fd, int type){
 						alarm(linkLayer->timeOut);
 						SEND = FALSE;
 					}
-					readingCycle(typeOfFrame,tmp,fd);
-					/*printf("fd = %d \n",fd);
-					r =  read(fd,t,1);
-			 		printf("o c errado =  %c \n", t[0]);
-					if(r > 0) {
-						state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-					  	pos++;
-					}*/		
+					readingCycle(typeOfFrame,tmp,fd);		
 				}
 			  }
+				if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+			alarm(0);
+			counterNumOfAttempts=0;
 		
 		
 		break;
@@ -444,9 +369,7 @@ int llclose(int fd, int type){
 char blockCheckCharacter(char buffer[], int size){
 	int i=0;
 	int bcc2=0;
-	printf("vou fazer check no bcc2 \n");
 	for(i;i<size;i++){
-		printf("estou a ler %i  ::%c \n",bcc2,buffer[i] );
 		bcc2=bcc2^buffer[i];
 	}
 	return bcc2;
@@ -468,20 +391,19 @@ int connectTransmitter(int fd){
       SEND = FALSE;
     }
       r =  read(fd,t,1);
-      printf("c =  %c \n", t[0]);
       if(r > 0)
         {
           state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
           pos++;
         }
-
-    printf("state %d \n", state);
-
   }
-  if(STOP == TRUE) // Everything went well
-    return 0;
-
-  return -1; // deu erro
+  if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+	}
+alarm(0);
+counterNumOfAttempts=0;
+  return 0;
 }
 
 
@@ -489,21 +411,6 @@ int connectReciever(int fd){ //receiver esta mal escrito
 typeOfFrame = SET;
 unsigned char tmp[5];
 readingCycle(typeOfFrame,tmp,fd);
-/*unsigned char t[1];
-int state = 0;
-int r = 0;
-int pos=0;
-STOP=FALSE;
-  while(STOP == FALSE){
-  	r =  read(fd,t,1);
-  	printf("c =  %c \n", t[0]);
-  	if(r > 0)
-  			{
-          state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-          pos++;
-        }
-  	printf("state %d \n", state);
-  }*/
 
   	printf("tmp[0] = %c , tmp[1] = %c, tmp[2] = %c , tmp[3] = %c , tmp[4] = %c \n" , tmp[0], tmp[1], tmp[2], tmp[3], tmp[4]);
 
@@ -547,9 +454,7 @@ void setAndSendUA(int fd){
   }
 }
 
-//tyoe 0->SET, 1->UA, 2->INF, 3->DISC acrescentar as q faltam e substituir por um enum
 int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos){
-	printf("entrei na state machine %d \n",type);
 
 	switch(state){
 	case 0:
@@ -644,7 +549,7 @@ void sendMessage(int fd, unsigned char* buf, int buf_size)
 {
 	unsigned char* message = createMessage(buf, buf_size);
 	buf_size = buf_size + (6 * sizeof(char));
-	//buf_size = byteStuffing(message, buf_size); vamos tentar enviar 1º sem bytestuffing
+	//buf_size = byteStuffing(message, buf_size); vamos tentar enviar 1ยบ sem bytestuffing
 
 	int num;
 	num = write(fd, message, buf_size);
