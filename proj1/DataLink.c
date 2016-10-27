@@ -1,5 +1,6 @@
 #include "DataLink.h"
 
+
 volatile int STOP=FALSE;
 volatile int SEND=TRUE;
 
@@ -8,27 +9,33 @@ unsigned int counterNumOfAttempts;
 int contador=0;
 LinkLayer * linkLayer;
 TypeOfFrame typeOfFrame;
+Stats* stats;
 unsigned int timeout;
 unsigned int alarm_n;
 
+void printStats();
 
 
-int configLinkLayer(int flagMode){
+int configLinkLayer(char pt[], int numRetries, int time, int baudrate){
   linkLayer = (LinkLayer*) malloc(sizeof(LinkLayer));
+  stats= (Stats*) malloc(sizeof(Stats));
 
-  char * port;
-  port = "/dev/ttyS0";
-  strcpy(linkLayer->port,port);
-  linkLayer->numTransmissions = 3;
-  linkLayer->baudRate = BAUDRATE;
-  linkLayer->timeOut = 3;
+  strcpy(linkLayer->port,pt);
+  linkLayer->numTransmissions = numRetries;
+  linkLayer->baudRate = baudrate;
+  linkLayer->timeOut = time;
   linkLayer->sequenceNumber=0;
 
-  return 1;
+  stats->transmitedTramas=0;
+  stats->receivedTramas=0;
+  stats->timeoutOcurrences=0;
+  stats->numRej=0;
+
+  return 0;
 
 }
 
-int setNewTermios(int fd){
+int setNewTermios(int fd, int flagMode){
 
   if ( tcgetattr(fd,&linkLayer->oldtio) == -1) { /* save current port settings */
     perror("tcgetattr");
@@ -36,16 +43,22 @@ int setNewTermios(int fd){
   }
 
   bzero(&linkLayer->newtio, sizeof(linkLayer->newtio));
-  linkLayer->newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+  linkLayer->newtio.c_cflag = linkLayer->baudRate | CS8 | CLOCAL | CREAD;
   linkLayer->newtio.c_iflag = IGNPAR;
   linkLayer->newtio.c_oflag = 0;
 
   /* set input mode (non-canonical, no echo,...) */
   linkLayer->newtio.c_lflag = 0;
 
-  linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-  linkLayer->newtio.c_cc[VMIN]     = 0;   /* blocking read until 1 chars received */
 
+	if(flagMode == RECEIVER){
+	  linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+	  linkLayer->newtio.c_cc[VMIN]     = 1;   /* blocking read until 1 chars received */
+	}
+	else{
+	  linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+	  linkLayer->newtio.c_cc[VMIN]     = 0;   /* blocking read until 1 chars received */
+	}
 
 
   tcflush(fd, TCIOFLUSH);
@@ -88,6 +101,7 @@ void sigalrm_handler(){
 	}
 	else SEND=TRUE;
 	counterNumOfAttempts++;
+ 	stats->timeoutOcurrences++;
 }
 
 
@@ -114,6 +128,7 @@ int llwrite(int fd, char *buffer, int length){
 		if(SEND){
 			//printf("enviei istoooo \n");
 			sendMessage(fd, buffer, length);
+			stats->transmitedTramas++;
 			alarm(linkLayer->timeOut);
 			SEND = FALSE;
 		}
@@ -128,6 +143,7 @@ int llwrite(int fd, char *buffer, int length){
 				SEND=TRUE;
 				STOP=FALSE;
 				pos=0;
+				 stats->numRej++;
 			}
 			else if((linkLayer->sequenceNumber==0 && tmp[2]==((1<<7)+C_RR))||(linkLayer->sequenceNumber==1 && tmp[2]==C_RR)){
 				printf("Receiver receives correctly \n");
@@ -159,7 +175,7 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 	int r = 0;
   	int pos=0;
   	STOP=FALSE;
-	alarm(9);
+	alarm(linkLayer->timeOut * linkLayer->numTransmissions);
 	while(STOP == FALSE){
 		r =  read(fd,t,1);
 		
@@ -189,8 +205,10 @@ int llread(int fd, char * data){
 	char * buffer;
     buffer= (char *) malloc(100);
 	int pos=readingCycle(typeOfFrame,buffer,fd);
-	 	
 	char send[5];
+	
+	stats->receivedTramas++;
+	
 	send[0]=FLAG;
 	send[1]=A;
 	/*int i=0;
@@ -198,6 +216,19 @@ int llread(int fd, char * data){
 		printf("recebi istooo %c \n",buffer[i]);	
 	}*/
 	
+	if(pos <= 6){
+   		send[2] = (linkLayer->sequenceNumber<<7) + C_REJ;
+		sleep(2); 
+     	tcflush(fd, TCIOFLUSH);
+		send[3] = send[1]^send[2];
+		send[4] = FLAG;
+		write(fd,send,5);
+		free(buffer);
+		return -1;
+   }
+
+
+
   	memcpy(data,&buffer[4],pos-6);
 	int correctSize =  deByteStuffing(data,pos-6);
 	int flagMal=0;
@@ -207,8 +238,8 @@ int llread(int fd, char * data){
 		//printf("bcc2 = %d:::o q recebe= %d \n",blockCheckCharacter(data,correctSize),buffer[pos-2]);
     	send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
 		sleep(2);
-tcflush(fd, TCIOFLUSH);
-flagMal=1;
+                tcflush(fd, TCIOFLUSH);
+                flagMal=1;
 		/*char oi[1024];
 		int li=read(fd,oi,1024);
 		for(i;i<li;i++){
@@ -238,12 +269,13 @@ flagMal=1;
 	send[3]=send[1]^send[2];
 	send[4]=FLAG;
   write(fd,send,5);
-if(flagMal)
-{
-free(buffer);
-return -1;
-}
-free(buffer);
+	if(flagMal)
+	{
+		free(buffer);
+		return -1;
+	}
+
+	free(buffer);
 
   return 0;
 }
@@ -381,6 +413,8 @@ int llclose(int fd, int type){
 		}
 	
 
+
+
 	if(closeSerialPort(fd) != 0){
 		perror("serial port with problems");
 		exit(3);
@@ -388,7 +422,7 @@ int llclose(int fd, int type){
 	else{
 		printf("closed serial port successfully \n");
 	}
-	
+	printStats();
 
   return 0;
 }
@@ -611,3 +645,14 @@ int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 
 	return newSize+6;
  }
+
+
+
+void printStats(){
+
+	printf("Numero de tramas transmitidas: %d \n",stats->transmitedTramas);
+	printf("Numero de tramas recebidas: %d \n", stats->receivedTramas);
+	printf("Numero de timeOuts: %d \n", stats->timeoutOcurrences);
+	printf("Numero de tramas rejeitadas: %d \n", stats->numRej);
+
+}
