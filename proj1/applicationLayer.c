@@ -3,6 +3,7 @@
 int fd; 
 
 int createfile(char* fileName);
+int sendFile(int fd);
 
 int receiveControlPacket(){
 
@@ -19,8 +20,7 @@ int receiveControlPacket(){
 	printf("file name is: %s \n",fileName);
 		
 	fd = createfile(fileName);
-	
-   	 free(data);
+   	free(data);
 	free(fileName);
 	return 0;
 }
@@ -52,14 +52,14 @@ int sendControlPacket(int i){
 	char size[4];
 	sprintf(size,"%x",500);
 	printf("TAMANHO : %X \n",500);
-	char *data = (char*)malloc(50);
+	char *data = (char*)malloc(BLOCK);
 	data[0]=i;
 	data[1]=0;
 	data[2]=4;
 	memmove(data+3,size,4);
 	data[7]=1;
-	data[8]=strlen("teste.txt");
-	memmove(data+9,"teste.txt",(int)data[8]);
+	data[8]=strlen("pinguim.gif");
+	memmove(data+9,"pinguim.gif",(int)data[8]);
 
 	llwrite(application->fileDescriptor,data,9+(int)data[8]);
 	free(data);
@@ -77,12 +77,13 @@ int readFile(){
     	if(data[0]==3 && value!=-1)
     		STOP=TRUE;
     	else if(value!=-1){
-printf("data %d \n",data[1]);
+			printf("data %d \n",data[1]);
     		writeOnFile(data); 		
     	}
     	bzero(data,100);
     }
     
+
     free(data);
     return 0;
 }
@@ -93,11 +94,12 @@ int initAppLayer(char serialPort[], int type){
   application->fileDescriptor = open(serialPort, O_RDWR | O_NOCTTY );      // open SerialPort
   if (application->fileDescriptor <0) {perror(serialPort); exit(-1); }
 
-  if (setNewTermios(application->fileDescriptor) != 0){            // set new termios
+  application->status = type;
+  if (setNewTermios(application->fileDescriptor, application->status) != 0){            // set new termios
     perror("Error setting new termios");
     exit(2);
   }
-  application->status = type;
+
   
   if(application->status == TRANSMITTER){
 
@@ -127,9 +129,8 @@ int initAppLayer(char serialPort[], int type){
 	if(receiveControlPacket()!=0){
 		printf("Can't receive start packet! \n");
 	}
-printf("received start packet! \n");
+	printf("received start packet! \n");
 	readFile();
-	
 	llclose(application->fileDescriptor,application->status);
   }
   
@@ -137,7 +138,7 @@ printf("received start packet! \n");
 }
 
 int sendFile(int fd){
-	FILE *f = fopen("teste.txt","r");
+	FILE *f = fopen("pinguim.gif","r");
 
 	if(f == NULL){
 		perror("Error openning file to send \n");
@@ -145,7 +146,8 @@ int sendFile(int fd){
 	}
 
     int size = 0;
-    char buffer[54];
+	int blockSize = BLOCK +4;
+    char buffer[blockSize];
 	int counter = 0;
 	char last[1];
 	buffer[0] = 1;
