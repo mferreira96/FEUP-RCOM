@@ -1,22 +1,23 @@
-#include <fcntl.h>
 #include "applicationLayer.h"
 int fd; 
 
-int createfile(char* fileName);
+int createfile( char* fileName);
 int sendFile(int fd);
 
 int receiveControlPacket(){
 
-	char * data;
-    data= (char *) malloc(100);
+	unsigned char * data;
+    data= (unsigned char *) malloc(50);
+    
     llread(application->fileDescriptor,data);
 	char fileSize[4];
 	memcpy(fileSize,&data[3],4);
 	int size;
 	sscanf(fileSize,"%X",&size);
-	char *fileName=malloc(sizeof(char)*20);
+	 char *fileName=malloc(sizeof( char)*20);
+	bzero(fileName,20);
 	memcpy(fileName,&data[9],(int)data[8]);
-	printf("file size is: %d \n",size);
+	printf("file size is: %d \n",(int)data[8]);
 	printf("file name is: %s \n",fileName);
 		
 	fd = createfile(fileName);
@@ -25,7 +26,7 @@ int receiveControlPacket(){
 	return 0;
 }
 
-int createfile(char* fileName)
+int createfile( char* fileName)
 {
 
 	int fdNew; 
@@ -40,19 +41,30 @@ int createfile(char* fileName)
 	
 }
 
-void writeOnFile(char * data){
+void writeOnFile(unsigned char * data){
 	int L2 = (int)data[2];
 	int L1 = (int)data[3];
 	int size = 256 * L2 + L1;
-	write(fd, data + 4,size);	
-	//printf("eu escrevi %d \n", sizeof(&data));
+	write(fd, data + 4,size);
 }
 
 int sendControlPacket(int i){
+
+	struct stat buf;
+	int fd=open("pinguim.gif", O_RDONLY);
+	if(fd < 0){
+		printf("Error opening file to be sent \n");	
+	}
+
+	fstat(fd, &buf);
+	int sizeOfFile = buf.st_size;
+	close(fd);
+	printf("TAMANHO decimal : %d \n",sizeOfFile);
 	char size[4];
-	sprintf(size,"%x",500);
-	printf("TAMANHO : %X \n",500);
-	char *data = (char*)malloc(BLOCK);
+	sprintf(size,"%X",sizeOfFile);
+	printf("TAMANHO : %s \n",size);
+
+	unsigned char *data = (unsigned char*)malloc(BLOCK);
 	data[0]=i;
 	data[1]=0;
 	data[2]=4;
@@ -68,9 +80,9 @@ return 0;
 
 int readFile(){
 	int STOP=FALSE;
-	char * data;
-    data= (char *) malloc(100);
-    bzero(data,100);
+	unsigned char * data;
+    data= (unsigned char *) malloc(2*BLOCK);
+    bzero(data,2*BLOCK);
     while(STOP==FALSE){
     	int value=llread(application->fileDescriptor,data);
 		
@@ -78,9 +90,10 @@ int readFile(){
     		STOP=TRUE;
     	else if(value!=-1){
 			printf("data %d \n",data[1]);
+			
     		writeOnFile(data); 		
     	}
-    	bzero(data,100);
+    	bzero(data,2*BLOCK);
     }
     
 
@@ -91,8 +104,7 @@ int readFile(){
 int initAppLayer(char serialPort[], int type){
 
   application = (applicationLayer *) malloc(sizeof(applicationLayer));
-  application->fileDescriptor = open(serialPort, O_RDWR | O_NOCTTY );      // open SerialPort
-  if (application->fileDescriptor <0) {perror(serialPort); exit(-1); }
+  application->fileDescriptor = openSerialPort(serialPort);
 
   application->status = type;
   if (setNewTermios(application->fileDescriptor, application->status) != 0){            // set new termios
@@ -129,6 +141,7 @@ int initAppLayer(char serialPort[], int type){
 	if(receiveControlPacket()!=0){
 		printf("Can't receive start packet! \n");
 	}
+	//sleep(5);
 	printf("received start packet! \n");
 	readFile();
 	llclose(application->fileDescriptor,application->status);
@@ -147,9 +160,9 @@ int sendFile(int fd){
 
     int size = 0;
 	int blockSize = BLOCK +4;
-    char buffer[blockSize];
+    unsigned char buffer[blockSize];
 	int counter = 0;
-	char last[1];
+	unsigned char last[1];
 	buffer[0] = 1;
 
 	printf("vou começar a enviar \n");
@@ -160,8 +173,8 @@ int sendFile(int fd){
 		}		
 		printf("size = %d \n",size);
 		buffer[1] = counter;
-		buffer[2] = size / 256;
-		buffer[3] = size % 256;		
+		buffer[2] = (size) / 256;
+		buffer[3] = (size) % 256;		
 		llwrite(fd, buffer,size + 4);	
 		
 		counter++;
@@ -169,7 +182,7 @@ int sendFile(int fd){
 	printf("sai do ciclo sendFile \n");
 	last[0] = 3;
 
-	llwrite(fd, last, strlen(last));
+	llwrite(fd, last, 1);
 	printf("Enviei mensagem de terminação da trama de dados \n");
 	
 	 if(fclose(f)!= 0){
