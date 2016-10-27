@@ -5,6 +5,11 @@
 #include "Cli.h"
 
 
+void clearStdin(){
+	char c;
+	while ((c = getchar()) != '\n' && c != EOF) { }
+
+}
 
 void choosePort(char * name){
 
@@ -15,8 +20,9 @@ void choosePort(char * name){
   printf(" 1 - /dev/ttyS1 \n");
   printf("option = ");
   scanf("%d",&option);
-
+  clearStdin();
   while(option != 0 && option != 1 ){
+	clearStdin();
     printf("choose a valid option\n");
     printf("option = ");
     scanf("%d",&option);
@@ -42,7 +48,7 @@ int chooseNRetries(){
   printf("write the max number of attempts: \n");
   printf("attempts = ");
   scanf("%d",&option);
-
+  clearStdin();
   if(option < 1){
     printf("Invalid option. By default the number of retries  will be: %d \n",NRETRIES_DEFAULT);
     return   NRETRIES_DEFAULT;
@@ -61,7 +67,7 @@ while(1){
   printf("0 is default \n");
   printf("baudrate = ");
   scanf("%d",&option);
-
+  clearStdin();
   switch (option) {
     case 0:
       return BAUDRATE_DEFAULT;
@@ -99,8 +105,9 @@ int chooseTimeout(){
   printf("write time out: \n");
   printf("time = ");
   scanf("%d",&option);
-
-  if(option < 1){
+  clearStdin();
+  
+	if(option < 1){   
     printf("Invalid option. By default the timeout will be: %d \n",TIMEOUT_DEFAULT);
     return   TIMEOUT_DEFAULT;
   }
