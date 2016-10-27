@@ -52,11 +52,23 @@ typedef enum{
   	REJ = 5
 }TypeOfFrame;
 
+typedef struct{
+	int transmitedTramas;
+	int receivedTramas;
+	int timeoutOcurrences;
+	int numRej;
+}Stats;
+
+
 extern LinkLayer* linkLayer;
 
-int setNewTermios(int fd);
+int setNewTermios(int fd, int flagMode);
 
-int configLinkLayer(int flagMode);
+int configLinkLayer(char pt[], int numRetries, int time, int baudrate);
+
+int connectTransmiter(int fd);
+
+int connectReciever(int fd);
 
 int llopen(int fd,int flagMode);
 
@@ -69,10 +81,6 @@ int llclose(int fd, int type);
 void setAndSendSET(int fd);
 
 void setAndSendUA(int fd);
-
-int connectTransmiter(int fd);
-
-int connectReciever(int fd);
 
 int stateMachine(unsigned char c, int state, char tmp[], TypeOfFrame type, int pos);
 
