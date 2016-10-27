@@ -1,6 +1,5 @@
 #include "DataLink.h"
 
-
 typedef struct{
 	int fileDescriptor;
 
@@ -9,3 +8,5 @@ typedef struct{
 }applicationLayer;
 
 applicationLayer * application;
+
+int initAppLayer(char serialPort[], int type);

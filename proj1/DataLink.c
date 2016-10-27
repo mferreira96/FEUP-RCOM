@@ -1,5 +1,6 @@
 #include "DataLink.h"
 
+
 volatile int STOP=FALSE;
 volatile int SEND=TRUE;
 
@@ -8,27 +9,48 @@ unsigned int counterNumOfAttempts;
 int contador=0;
 LinkLayer * linkLayer;
 TypeOfFrame typeOfFrame;
+Stats* stats;
 unsigned int timeout;
 unsigned int alarm_n;
 
+void printStats();
+int connectTransmitter(int fd);
 
 
-int configLinkLayer(int flagMode){
+int configLinkLayer(char pt[], int numRetries, int time, int baudrate){
   linkLayer = (LinkLayer*) malloc(sizeof(LinkLayer));
+  stats= (Stats*) malloc(sizeof(Stats));
 
-  char * port;
-  port = "/dev/ttyS0";
-  strcpy(linkLayer->port,port);
-  linkLayer->numTransmissions = 3;
-  linkLayer->baudRate = BAUDRATE;
-  linkLayer->timeOut = 3;
+  strcpy(linkLayer->port,pt);
+  linkLayer->numTransmissions = numRetries;
+  linkLayer->baudRate = baudrate;
+  linkLayer->timeOut = time;
   linkLayer->sequenceNumber=0;
 
-  return 1;
+  stats->transmitedTramas=0;
+  stats->receivedTramas=0;
+  stats->timeoutOcurrences=0;
+  stats->numRej=0;
+  stats->numRR=0;
+
+  return 0;
 
 }
 
-int setNewTermios(int fd){
+int openSerialPort(char serialPort[]){
+
+	int fd = open(serialPort, O_RDWR | O_NOCTTY );      // open SerialPort
+  	if (fd < 0){
+		perror(serialPort); 
+		exit(-1); 
+	}
+	
+	return fd;
+
+}
+
+
+int setNewTermios(int fd, int flagMode){
 
   if ( tcgetattr(fd,&linkLayer->oldtio) == -1) { /* save current port settings */
     perror("tcgetattr");
@@ -36,16 +58,22 @@ int setNewTermios(int fd){
   }
 
   bzero(&linkLayer->newtio, sizeof(linkLayer->newtio));
-  linkLayer->newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+  linkLayer->newtio.c_cflag = linkLayer->baudRate | CS8 | CLOCAL | CREAD;
   linkLayer->newtio.c_iflag = IGNPAR;
   linkLayer->newtio.c_oflag = 0;
 
   /* set input mode (non-canonical, no echo,...) */
   linkLayer->newtio.c_lflag = 0;
 
-  linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
-  linkLayer->newtio.c_cc[VMIN]     = 1;   /* blocking read until 1 chars received */
 
+	if(flagMode == RECEIVER){
+	  linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+	  linkLayer->newtio.c_cc[VMIN]     = 1;   /* blocking read until 1 chars received */
+	}
+	else{
+	  linkLayer->newtio.c_cc[VTIME]    = 0;   /* inter-character timer unused */
+	  linkLayer->newtio.c_cc[VMIN]     = 0;   /* blocking read until 1 chars received */
+	}
 
 
   tcflush(fd, TCIOFLUSH);
@@ -60,50 +88,15 @@ int setNewTermios(int fd){
 
 
 int llopen(int fd, int flagMode){
-  /*int fd;
-
-  fd = open(port, O_RDWR | O_NOCTTY );      // open SerialPort
-  if (fd <0) {perror(port); exit(-1); }
-
-  if (setNewTermios(fd) != 0){            // set new termios
-    perror("Error setting new termios");
-    exit(2);
-  }*/
 	alarm_n=1;
   signal(SIGALRM, sigalrm_handler);       //sigalrm_handler is the function  called when the alarm is fired
   printf("cheguei aqui \n");
   int error;
   if(flagMode == TRANSMITTER){
     error = connectTransmitter(fd); // Transmitter try to stablish communication
-
-/*char tamanho[4];
-sprintf(tamanho,"%ld",500);
-printf("tamanho : %s \n",tamanho);
-    char Frame[20];
-	Frame[0]=FLAG;
-Frame[1]=A;
-Frame[2]=contador;
-Frame[3]=Frame[1]^Frame[2];
-Frame[4]=2;
-Frame[5]=0;
-Frame[6]=4;
-printf("cheguei aqui \n");
-memmove(Frame+7,tamanho,4);
-printf("cheguei aqui \n");
-Frame[11]=1;
-Frame[12]=strlen("ONOME");
-memmove(Frame+13,"ONOME",5);
-Frame[18]= blockCheckCharacter(&Frame[4],14);
-Frame[19]=FLAG;
-
-	write(fd,Frame,20);*/
   }
   else{
     error = connectReciever(fd);    //Reciever try to stablish communication
-    /*char * buffer;
-    buffer= (char *) malloc(50);
-    llread(fd,buffer);
-    free(buffer);*/
   }
 
   if(error == -1){
@@ -117,68 +110,63 @@ Frame[19]=FLAG;
 
 
 void sigalrm_handler(){
-  
-  if(alarm_n == 1)
-  {
-   SEND = TRUE;
-   counterNumOfAttempts++;
-  }
-  else if (alarm_n == 2)
-  {
-      timeout++;
-      printf("\n Timeout, llwrite n%d \n",timeout);
-
-        /*if(timeout >=linkLayer->timeout)
-          alarm(0);
-        else
-        alarm(linkLayer->timeout);*/ //ta a dar erro de compilacao...
-
-  }
-  else
-    printf("\n erro alarm handler \n");
+	printf("Alarm shot!! \n");
+	if(SEND==TRUE||counterNumOfAttempts == linkLayer->numTransmissions){
+	 STOP=TRUE;
+	}
+	else SEND=TRUE;
+	counterNumOfAttempts++;
+ 	stats->timeoutOcurrences++;
 }
 
 
 
 // send frame
 //TUDO ainda por acabar
-int llwrite(int fd, char *buffer, int length){
+int llwrite(int fd, unsigned char *buffer, int length){
 
-	 timeout = 0;
-  alarm_n=2;
-  //signal(SIGALRM, sigalrm_handler);  so se precisa de instalar o alarme uma vez...
+	timeout = 0;
+  	alarm_n=2;
+  	//signal(SIGALRM, sigalrm_handler);  so se precisa de instalar o alarme uma vez...
 
 	SEND=TRUE;
 	//sendMessage(fd, buffer, length);
 
-unsigned char t[1];
+	unsigned char t[1];
 	int state = 0;
 	int r = 0;
-  int pos=0;
-  STOP=FALSE;
-typeOfFrame=RR;
-unsigned char tmp[5];
+ 	int pos=0;
+ 	STOP=FALSE;
+	typeOfFrame=RR;
+	unsigned char tmp[5];
 	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 		if(SEND){
-			//setAndSendDisc(fd);
-			printf("enviei istoooo \n");
+			//printf("enviei istoooo \n");
 			sendMessage(fd, buffer, length);
+			stats->transmitedTramas++;
 			alarm(linkLayer->timeOut);
 			SEND = FALSE;
 		}
 		r =  read(fd,t,1);
-		printf("c =  %c \n", t[0]);
-		if(r > 0) {
+				if(r > 0) {
 			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
 			pos++;
 		}
 		if(pos==5){
-			if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_RR))||(tmp[2]==((linkLayer->sequenceNumber<<7)+C_REJ))){
-				printf("Receiver receives same or wrong. send again! \n");
-				SEND=FALSE;
+			if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_REJ))){
+				printf("Receiver receives  wrong. send again! \n");
+				SEND=TRUE;
 				STOP=FALSE;
 				pos=0;
+				stats->numRej++;
 			}
+			else if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_RR))){
+				printf("Receiver receives repeated \n");
+				STOP=TRUE;
+				printf("vou sair \n");
+				stats->numRR++;
+			}
+
 			else if((linkLayer->sequenceNumber==0 && tmp[2]==((1<<7)+C_RR))||(linkLayer->sequenceNumber==1 && tmp[2]==C_RR)){
 				printf("Receiver receives correctly \n");
 				STOP=TRUE;
@@ -186,8 +174,15 @@ unsigned char tmp[5];
 			}
 		}		
 	}
-  printf("\n \n Saiu do ciclo \n");
-
+	if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+	if(linkLayer->sequenceNumber==0)
+		linkLayer->sequenceNumber=1;
+	else linkLayer->sequenceNumber=0;
+	alarm(0);
+	counterNumOfAttempts=0;
   return 0;
 }
 
@@ -196,104 +191,125 @@ int calculateDataSize(int size){
 	return size-6;
 }
 
-/*int sendFile(int fd){
-	FILE *f=fopen("teste.txt","r");
-    int size;
-    char buffer[50];
-    // ...
-    while((size=fread(buffer,BLOCK,sizeof(char),f)>0)
-            //fwrite(buffer,size,sizeof(char),stdout); chamar llwrite
-    fclose(f);
-}*/
-
-int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
+int readingCycle(TypeOfFrame typeOfFrame,unsigned char * buffer,int fd){
 	unsigned char t[1];
 	int state = 0;
 	int r = 0;
-  int pos=0;
-  STOP=FALSE;
+  	int pos=0;
+	int lastState=0;
+  	STOP=FALSE;
+	alarm(linkLayer->timeOut * linkLayer->numTransmissions);
 	while(STOP == FALSE){
 		r =  read(fd,t,1);
-		printf("c =  %c \n", t[0]);
+		
 		if(r > 0)
 			{
+				//printf("c =  %c \n", t[0]);
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
-        pos++;
+		if(lastState!=state||state==4){
+			pos++;
+			lastState=state;
+		}        
+		//printf("state %d \n", state);
       }
-		printf("state %d \n", state);
+		
 	}
+	//printf("teste %d \n", pos);
+	if(state != 4 || buffer[pos-1]!=FLAG){
+		perror("Lost connection to sender \n");
+		exit(3);
+	}
+	//printf("passei teste %d \n", state);
+	alarm(0);
+	counterNumOfAttempts=0;
 	return pos;
 }
 
 // recieve frame
-int llread(int fd, char * data){
+int llread(int fd,unsigned char * data){
 	typeOfFrame = INF;
-	char * buffer;
-    buffer= (char *) malloc(100);
+	unsigned char * buffer;
+    buffer= (unsigned char *) malloc(2*BLOCK);
 	int pos=readingCycle(typeOfFrame,buffer,fd);
-	/*unsigned char t[1];
-	int state = 0;
-	int r = 0;
-  int pos=0;
-	STOP=FALSE;
-	while(STOP == FALSE){
-		r =  read(fd,t,1);
-		printf("c =  %c \n", t[0]);
-		if(r > 0)
-			{
-        state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
-        pos++;
-      }
-		printf("state %d \n", state);
-	}*/
 	char send[5];
+	
+	stats->receivedTramas++;
+	
 	send[0]=FLAG;
 	send[1]=A;
-  int i=0;
+	/*int i=0;
+	for(i;i<pos;i++){
+		printf("recebi istooo %c \n",buffer[i]);	
+	}*/
+	
+	if(pos <= 6){
+   		send[2] = (linkLayer->sequenceNumber<<7) + C_REJ;
+		sleep(2); 
+     	tcflush(fd, TCIOFLUSH);
+		send[3] = send[1]^send[2];
+		send[4] = FLAG;
+		write(fd,send,5);
+		free(buffer);
+		return -1;
+   }
 
-  char counter[1];
-//  sprintf(counter,"%d",contador);
- // char *data;
- // data= (char *) malloc(50);
-
-  memcpy(data,&buffer[4],calculateDataSize(pos));
 
 
-	if(blockCheckCharacter(data,14)!=buffer[pos-2]){
-    printf("recebi mal o bcc2\n");
-    send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
-    printf("alalal %c", send[2]);
+  	memcpy(data,&buffer[4],pos-6);
+	int correctSize =  deByteStuffing(data,pos-6);
+	int flagMal=0;
+
+
+	if(blockCheckCharacter(data,correctSize)!=buffer[pos-2]){
+		//printf("bcc2 = %d:::o q recebe= %d \n",blockCheckCharacter(data,correctSize),buffer[pos-2]);
+    	send[2]=(linkLayer->sequenceNumber<<7)+C_REJ;
+		sleep(2);
+                tcflush(fd, TCIOFLUSH);
+                flagMal=1;
+		/*char oi[1024];
+		int li=read(fd,oi,1024);
+		for(i;i<li;i++){
+			printf("recebi istooo %c \n",oi[i]);	
+		}
+		printf("liiiiiiii= %d \n",li);*/
 	}
-  else if((buffer[2])!=(linkLayer->sequenceNumber << 6)){
-    printf("recebi repetido \n");
-    if(linkLayer->sequenceNumber==0)
-      send[2]=(0<<7)+C_RR;
-    else
-      send[2]=(1<<7)+C_RR;
+  	else if((buffer[2])!=(linkLayer->sequenceNumber << 6)){
+  	  //printf("recebi repetido %c %c \n",(buffer[2]),(linkLayer->sequenceNumber << 6));
+  		flagMal=1;
+  		if(linkLayer->sequenceNumber==0)
+      		send[2]=(0<<7)+C_RR;
+    	else
+      		send[2]=(1<<7)+C_RR;
 
-    printf("alalal %c \n", send[2]);
-  }
+   		 //printf("alalal %c \n", send[2]);
+ 	}
   else{
-    printf("recebi\n");
+    //printf("recebi\n");
     if(linkLayer->sequenceNumber==0)
       linkLayer->sequenceNumber=1;
     else
       linkLayer->sequenceNumber=0;
     send[2]=(linkLayer->sequenceNumber<<7)+C_RR;
-    printf("alalal %c \n", send[2]);
+    //printf("alalal %c \n", send[2]);
   }
 	send[3]=send[1]^send[2];
 	send[4]=FLAG;
-
   write(fd,send,5);
+	if(flagMal)
+	{
+		free(buffer);
+		return -1;
+	}
 
-free(buffer);
+	free(buffer);
+
   return 0;
 }
 
-int byteStuffing(char packet[], int size){
+
+int byteStuffing(unsigned char packet[], int size){
   int i=0;
-  for(i;i< size;i++){
+  for(;i< size;i++){
     if(packet[i]==FLAG||packet[i]==ESC){
       memmove(packet+i+1,packet+i,size-i);
       packet[i]=ESC;
@@ -304,17 +320,21 @@ int byteStuffing(char packet[], int size){
   return size;
 }
 
-int deByteStuffing(char packet[], int size){
+int deByteStuffing(unsigned char packet[], int size){
   int i=0;
-  for(i;i< size;i++){
+  for(;i< size;i++){
     if(packet[i]==ESC){
-      memmove(packet+i,packet+i+1,size-i);
+      memmove(packet+i,packet+i+1,size-i-1);
+      printf("packet teste %d \n",packet[i]);
       packet[i]=packet[i]^0x20;
+      printf("packet passei teste %d \n",packet[i]);
       size--;
     }
   }
   return size;
 }
+
+
 
 void setAndSendDisc(int fd){
   unsigned char DISC[5];
@@ -369,41 +389,36 @@ int llclose(int fd, int type){
 					SEND = FALSE;
 				}
 				r =  read(fd,t,1);
-     			printf("c =  %c \n", t[0]);
     			if(r > 0) {
         			state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-					printf("state =  %d \n", state);
-        		  	pos++;
+					pos++;
         		}		
 			}
+
+			if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+
+			alarm(0);
+			counterNumOfAttempts=0;
 			
 			if(STOP == TRUE){
 				setAndSendUA(fd);
 			}
 			
-			if(counterNumOfAttempts == linkLayer->numTransmissions && STOP == FALSE){
-				perror("Number max of tries achieved");
-				exit(3);
-			}
+		
 	
 		
 		break;
 		case RECEIVER:
 	
 				readingCycle(typeOfFrame,tmp,fd);
- 			/* while(STOP == FALSE){
-			  	r =  read(fd,t,1);
-			  	printf("c =  %c \n", t[0]);
-			  	if(r > 0){
-				 state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-				 pos++;
-				}
-			  	printf("state %d \n", state);
-			  }*/
 			  
 			  if(STOP == TRUE){
 			  	STOP = FALSE;
 			  	SEND = TRUE; 
+			  	bzero(tmp,5);
 			  	typeOfFrame = UA;
 			  	while(counterNumOfAttempts != linkLayer->numTransmissions && STOP == FALSE){
 					if(SEND){
@@ -411,19 +426,22 @@ int llclose(int fd, int type){
 						alarm(linkLayer->timeOut);
 						SEND = FALSE;
 					}
-					r =  read(fd,t,1);
-			 		printf("c =  %c \n", t[0]);
-					if(r > 0) {
-						state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-					  	pos++;
-					}		
+					readingCycle(typeOfFrame,tmp,fd);		
 				}
 			  }
+				if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+			}
+			alarm(0);
+			counterNumOfAttempts=0;
 		
 		
 		break;
 		}
 	
+
+
 
 	if(closeSerialPort(fd) != 0){
 		perror("serial port with problems");
@@ -432,16 +450,15 @@ int llclose(int fd, int type){
 	else{
 		printf("closed serial port successfully \n");
 	}
-	
+	printStats();
 
   return 0;
 }
 
-char blockCheckCharacter(char buffer[], int size){
+unsigned char blockCheckCharacter(unsigned char buffer[], int size){
 	int i=0;
 	int bcc2=0;
-
-	for(i;i<size;i++){
+	for(;i<size;i++){
 		bcc2=bcc2^buffer[i];
 	}
 	return bcc2;
@@ -463,20 +480,19 @@ int connectTransmitter(int fd){
       SEND = FALSE;
     }
       r =  read(fd,t,1);
-      printf("c =  %c \n", t[0]);
       if(r > 0)
         {
           state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
           pos++;
         }
-
-    printf("state %d \n", state);
-
   }
-  if(STOP == TRUE) // Everything went well
-    return 0;
-
-  return -1; // deu erro
+  if(counterNumOfAttempts == linkLayer->numTransmissions){
+				perror("Number max of tries achieved");
+				exit(3);
+	}
+alarm(0);
+counterNumOfAttempts=0;
+  return 0;
 }
 
 
@@ -484,23 +500,8 @@ int connectReciever(int fd){ //receiver esta mal escrito
 typeOfFrame = SET;
 unsigned char tmp[5];
 readingCycle(typeOfFrame,tmp,fd);
-/*unsigned char t[1];
-int state = 0;
-int r = 0;
-int pos=0;
-STOP=FALSE;
-  while(STOP == FALSE){
-  	r =  read(fd,t,1);
-  	printf("c =  %c \n", t[0]);
-  	if(r > 0)
-  			{
-          state = stateMachine(t[0], state, tmp,typeOfFrame,pos);
-          pos++;
-        }
-  	printf("state %d \n", state);
-  }*/
 
-  	printf("tmp[0] = %c , tmp[1] = %c, tmp[2] = %c , tmp[3] = %c , tmp[4] = %c \n" , tmp[0], tmp[1], tmp[2], tmp[3], tmp[4]);
+  //	printf("tmp[0] = %c , tmp[1] = %c, tmp[2] = %c , tmp[3] = %c , tmp[4] = %c \n" , tmp[0], tmp[1], tmp[2], tmp[3], tmp[4]);
 
     if(STOP == TRUE){
       setAndSendUA(fd);
@@ -542,9 +543,7 @@ void setAndSendUA(int fd){
   }
 }
 
-//tyoe 0->SET, 1->UA, 2->INF, 3->DISC acrescentar as q faltam e substituir por um enum
-int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos){
-	printf("entrei na state machine %d \n",type);
+int stateMachine(unsigned char c, int state, unsigned char tmp[],TypeOfFrame type,int pos){
 
 	switch(state){
 	case 0:
@@ -563,13 +562,14 @@ int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos
 		}
 	break;
 	case 2:
-		if((c == C_UA && type==1)||(c == C_SET && type==0)||(type==2)||(c==C_DISC && type==3)||(type==4)||(type==5)){
+	if(c == FLAG){
+			state = 1;
+		}
+		
+		else if((c == C_UA && type==1)||(c == C_SET && type==0)||(type==2)||(c==C_DISC && type==3)||(type==4)||(type==5)){
 
 			tmp[pos] = c;
 			state++;
-		}
-		else if(c == FLAG){
-			state = 1;
 		}
 		else{
 		 state = 0;
@@ -602,7 +602,7 @@ int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos
 }
 
 
-void sendControlPackage(int control, int fd, char* filename, char* filesize)
+/*void sendControlPackage(int control, int fd, char* filename, char* filesize)
 {
 
 	int sizeof_filesize = strlen(filesize);
@@ -631,44 +631,64 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 		controlPackage[++pos] = filename[i];
 	}
 
+}	*/
 
-	//LLWRITE AQUI
-
-}	
-void sendMessage(int fd, unsigned char* buf, int buf_size)
+int sendMessage(int fd, unsigned char* buf, int buf_size)
 {
-	unsigned char* message = createMessage(buf, buf_size);
-	buf_size = buf_size + (6 * sizeof(char));
-	//buf_size = byteStuffing(message, buf_size); vamos tentar enviar 1º sem bytestuffing
-
+	unsigned char* message = (unsigned char*)malloc(2*BLOCK);//createMessage(buf, buf_size);
+	//buf_size = buf_size + (6 * sizeof(char));
+	//buf_size = byteStuffing(message, buf_size); //vamos tentar enviar 1ยบ sem bytestuffing
+	int size=createMessage(buf,message, buf_size);
 	int num;
-	num = write(fd, message, buf_size);
-	if(num != buf_size)
+	tcflush(fd,TCIOFLUSH);
+	num = write(fd, message, size);
+	if(num != size)
 	  printf("Error sending message \n");
 
 	free(message);
+
+	return size - 6;
 }
 
-unsigned char* createMessage(const unsigned char* buf, int buf_size)
+int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 {
-	int msg_size = 6 * sizeof(char);
-	unsigned char* message = malloc(msg_size + buf_size);
 
+	unsigned char* newBuff=(unsigned char*)malloc(2*BLOCK);
+	memcpy(newBuff,buf,buf_size);
 	unsigned char controlCamp = linkLayer->sequenceNumber << 6;
-	unsigned char BCC1 = A ^ controlCamp;
-
-	unsigned char BCC2;
+	//unsigned char BCC1 = A ^ controlCamp;
+	char BCC2=blockCheckCharacter(&newBuff[0],buf_size);
+	/*unsigned char BCC2;
 	int i;
 	for(i = 0; i < buf_size; i++)
-	  BCC2 ^= buf[i]; //eu ja tinha criado uma funcao q fazia isto...
+	  BCC2 ^= buf[i]; //eu ja tinha criado uma funcao q fazia isto...*/
 
 	message[0] = FLAG;
 	message[1] = A;
 	message[2] = controlCamp;
 	message[3] = A^controlCamp;
-	memcpy(&message[4], buf, buf_size);
-	message[4+buf_size] = blockCheckCharacter(&buf[0],buf_size);;
-	message[5+buf_size] = FLAG;
 
-	return message;
+	int newSize;// = buf_size;
+	//if(counterNumOfAttempts == 0){
+	//printf("oioioioioioi %d",contador);
+	//contador++;
+	newSize = byteStuffing(newBuff, buf_size);
+	//}
+	memcpy(&message[4], newBuff, newSize);
+	message[4+newSize] = BCC2;
+	message[5+newSize] = FLAG;
+	free(newBuff);
+	return newSize+6;
  }
+
+
+
+void printStats(){
+
+	printf("Numero de tramas transmitidas: %d \n",stats->transmitedTramas);
+	printf("Numero de tramas recebidas: %d \n", stats->receivedTramas);
+	printf("Numero de timeOuts: %d \n", stats->timeoutOcurrences);
+	printf("Numero de tramas rejeitadas: %d \n", stats->numRej);
+	printf("Numero de tramas repetidas: %d \n", stats->numRR);
+
+}

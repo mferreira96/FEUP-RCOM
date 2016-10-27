@@ -26,6 +26,7 @@
 #define FALSE 0
 #define TRUE 1
 
+#define BLOCK 50
 #define CONTROL_START 	2
 #define CONTROL_END		3
 #define CONTROL_DATA	1
@@ -52,17 +53,32 @@ typedef enum{
   	REJ = 5
 }TypeOfFrame;
 
+typedef struct{
+	int transmitedTramas;
+	int receivedTramas;
+	int timeoutOcurrences;
+	int numRej;
+	int numRR;
+}Stats;
+
+
 extern LinkLayer* linkLayer;
 
-int setNewTermios(int fd);
+int openSerialPort(char serialPort[]);
 
-int configLinkLayer(int flagMode);
+int setNewTermios(int fd, int flagMode);
 
-int llopen(char port[],int flagMode);
+int configLinkLayer(char pt[], int numRetries, int time, int baudrate);
 
-int llwrite(int fd, char *buffer, int length);
+int connectTransmiter(int fd);
 
-int llread(int fd, char * buffer);
+int connectReciever(int fd);
+
+int llopen(int fd,int flagMode);
+
+int llwrite(int fd, unsigned char *buffer, int length);
+
+int llread(int fd, unsigned char * buffer);
 
 int llclose(int fd, int type);
 
@@ -70,27 +86,23 @@ void setAndSendSET(int fd);
 
 void setAndSendUA(int fd);
 
-int connectTransmiter(int fd);
-
-int connectReciever(int fd);
-
-int stateMachine(unsigned char c, int state, char tmp[], TypeOfFrame type, int pos);
+int stateMachine(unsigned char c, int state, unsigned char tmp[], TypeOfFrame type, int pos);
 
 void sigalrm_handler();
 
-char blockCheckCharacter(char buffer[], int size);
+unsigned char blockCheckCharacter(unsigned char buffer[], int size);
 
 void sendControlPackage(int control, int fd, char* name, char* filesize);
 
-void sendMessage(int fd, unsigned char* buf, int buf_size);
+int sendMessage(int fd, unsigned char* buf, int buf_size);
 
-unsigned char* createMessage(const unsigned char* buf, int buf_size);
+int createMessage(const unsigned char* buf,unsigned char* message, int buf_size);
 
 int calculateDataSize(int size);
 
-int byteStuffing(char packet[], int size);
+int byteStuffing(unsigned char packet[], int size);
 
-int deByteStuffing(char packet[], int size);
+int deByteStuffing(unsigned char packet[], int size);
 
 
 
