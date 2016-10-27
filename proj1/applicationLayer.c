@@ -4,6 +4,7 @@ int fd;
 int createfile( char* fileName);
 int sendFile(int fd);
 
+//receives and process info from start packet
 int receiveControlPacket(){
 
 	unsigned char * data;
@@ -26,6 +27,7 @@ int receiveControlPacket(){
 	return 0;
 }
 
+//creates the file with name given from start packet
 int createfile( char* fileName)
 {
 
@@ -41,6 +43,7 @@ int createfile( char* fileName)
 	
 }
 
+//writes data on the file
 void writeOnFile(unsigned char * data){
 	int L2 = (int)data[2];
 	int L1 = (int)data[3];
@@ -48,6 +51,7 @@ void writeOnFile(unsigned char * data){
 	write(fd, data + 4,size);
 }
 
+//sends start control packet
 int sendControlPacket(int i){
 
 	struct stat buf;
@@ -78,6 +82,7 @@ int sendControlPacket(int i){
 return 0;
 }
 
+//reads information frames and calls writeOnFile
 int readFile(){
 	int STOP=FALSE;
 	unsigned char * data;
@@ -101,6 +106,7 @@ int readFile(){
     return 0;
 }
 
+//the application layer is initialized, sends and recevives data packets
 int initAppLayer(char serialPort[], int type){
 
   application = (applicationLayer *) malloc(sizeof(applicationLayer));
@@ -150,6 +156,7 @@ int initAppLayer(char serialPort[], int type){
   return 0;
 }
 
+//reads from file and calls llwrite
 int sendFile(int fd){
 	FILE *f = fopen("pinguim.gif","r");
 
