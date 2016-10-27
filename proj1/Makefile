@@ -5,13 +5,11 @@ main.o: main.c
 	gcc -c main.c
 
 applicationLayer.o: applicationLayer.c
-	gcc -c applicationLayer.c
+	gcc -c applicationLayer.c -Wall
 
 DataLink.o: DataLink.c
-	gcc -c DataLink.c
+	gcc -c DataLink.c -Wall
 
 Cli.o: Cli.c
-	gcc -c Cli.c
-
-
+	gcc -c Cli.c -Wall
 
