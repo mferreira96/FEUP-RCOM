@@ -14,6 +14,7 @@ unsigned int timeout;
 unsigned int alarm_n;
 
 void printStats();
+int connectTransmitter(int fd);
 
 
 int configLinkLayer(char pt[], int numRetries, int time, int baudrate){
@@ -30,10 +31,24 @@ int configLinkLayer(char pt[], int numRetries, int time, int baudrate){
   stats->receivedTramas=0;
   stats->timeoutOcurrences=0;
   stats->numRej=0;
+  stats->numRR=0;
 
   return 0;
 
 }
+
+int openSerialPort(char serialPort[]){
+
+	int fd = open(serialPort, O_RDWR | O_NOCTTY );      // open SerialPort
+  	if (fd < 0){
+		perror(serialPort); 
+		exit(-1); 
+	}
+	
+	return fd;
+
+}
+
 
 int setNewTermios(int fd, int flagMode){
 
@@ -108,9 +123,9 @@ void sigalrm_handler(){
 
 // send frame
 //TUDO ainda por acabar
-int llwrite(int fd, char *buffer, int length){
+int llwrite(int fd, unsigned char *buffer, int length){
 
-	 timeout = 0;
+	timeout = 0;
   	alarm_n=2;
   	//signal(SIGALRM, sigalrm_handler);  so se precisa de instalar o alarme uma vez...
 
@@ -138,13 +153,20 @@ int llwrite(int fd, char *buffer, int length){
 			pos++;
 		}
 		if(pos==5){
-			if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_RR))||(tmp[2]==((linkLayer->sequenceNumber<<7)+C_REJ))){
-				printf("Receiver receives same or wrong. send again! \n");
+			if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_REJ))){
+				printf("Receiver receives  wrong. send again! \n");
 				SEND=TRUE;
 				STOP=FALSE;
 				pos=0;
-				 stats->numRej++;
+				stats->numRej++;
 			}
+			else if((tmp[2]==((linkLayer->sequenceNumber<<7)+C_RR))){
+				printf("Receiver receives repeated \n");
+				STOP=TRUE;
+				printf("vou sair \n");
+				stats->numRR++;
+			}
+
 			else if((linkLayer->sequenceNumber==0 && tmp[2]==((1<<7)+C_RR))||(linkLayer->sequenceNumber==1 && tmp[2]==C_RR)){
 				printf("Receiver receives correctly \n");
 				STOP=TRUE;
@@ -169,11 +191,12 @@ int calculateDataSize(int size){
 	return size-6;
 }
 
-int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
+int readingCycle(TypeOfFrame typeOfFrame,unsigned char * buffer,int fd){
 	unsigned char t[1];
 	int state = 0;
 	int r = 0;
   	int pos=0;
+	int lastState=0;
   	STOP=FALSE;
 	alarm(linkLayer->timeOut * linkLayer->numTransmissions);
 	while(STOP == FALSE){
@@ -181,9 +204,12 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 		
 		if(r > 0)
 			{
-		//printf("c =  %c \n", t[0]);
+				//printf("c =  %c \n", t[0]);
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
-        pos++;
+		if(lastState!=state||state==4){
+			pos++;
+			lastState=state;
+		}        
 		//printf("state %d \n", state);
       }
 		
@@ -200,10 +226,10 @@ int readingCycle(TypeOfFrame typeOfFrame,char * buffer,int fd){
 }
 
 // recieve frame
-int llread(int fd, char * data){
+int llread(int fd,unsigned char * data){
 	typeOfFrame = INF;
-	char * buffer;
-    buffer= (char *) malloc(100);
+	unsigned char * buffer;
+    buffer= (unsigned char *) malloc(2*BLOCK);
 	int pos=readingCycle(typeOfFrame,buffer,fd);
 	char send[5];
 	
@@ -281,9 +307,9 @@ int llread(int fd, char * data){
 }
 
 
-int byteStuffing(char packet[], int size){
+int byteStuffing(unsigned char packet[], int size){
   int i=0;
-  for(i;i< size;i++){
+  for(;i< size;i++){
     if(packet[i]==FLAG||packet[i]==ESC){
       memmove(packet+i+1,packet+i,size-i);
       packet[i]=ESC;
@@ -294,12 +320,14 @@ int byteStuffing(char packet[], int size){
   return size;
 }
 
-int deByteStuffing(char packet[], int size){
+int deByteStuffing(unsigned char packet[], int size){
   int i=0;
-  for(i;i< size;i++){
+  for(;i< size;i++){
     if(packet[i]==ESC){
-      memmove(packet+i,packet+i+1,size-i);
+      memmove(packet+i,packet+i+1,size-i-1);
+      printf("packet teste %d \n",packet[i]);
       packet[i]=packet[i]^0x20;
+      printf("packet passei teste %d \n",packet[i]);
       size--;
     }
   }
@@ -427,10 +455,10 @@ int llclose(int fd, int type){
   return 0;
 }
 
-char blockCheckCharacter(char buffer[], int size){
+unsigned char blockCheckCharacter(unsigned char buffer[], int size){
 	int i=0;
 	int bcc2=0;
-	for(i;i<size;i++){
+	for(;i<size;i++){
 		bcc2=bcc2^buffer[i];
 	}
 	return bcc2;
@@ -515,7 +543,7 @@ void setAndSendUA(int fd){
   }
 }
 
-int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos){
+int stateMachine(unsigned char c, int state, unsigned char tmp[],TypeOfFrame type,int pos){
 
 	switch(state){
 	case 0:
@@ -534,13 +562,14 @@ int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos
 		}
 	break;
 	case 2:
-		if((c == C_UA && type==1)||(c == C_SET && type==0)||(type==2)||(c==C_DISC && type==3)||(type==4)||(type==5)){
+	if(c == FLAG){
+			state = 1;
+		}
+		
+		else if((c == C_UA && type==1)||(c == C_SET && type==0)||(type==2)||(c==C_DISC && type==3)||(type==4)||(type==5)){
 
 			tmp[pos] = c;
 			state++;
-		}
-		else if(c == FLAG){
-			state = 1;
 		}
 		else{
 		 state = 0;
@@ -573,7 +602,7 @@ int stateMachine(unsigned char c, int state, char tmp[],TypeOfFrame type,int pos
 }
 
 
-void sendControlPackage(int control, int fd, char* filename, char* filesize)
+/*void sendControlPackage(int control, int fd, char* filename, char* filesize)
 {
 
 	int sizeof_filesize = strlen(filesize);
@@ -602,13 +631,11 @@ void sendControlPackage(int control, int fd, char* filename, char* filesize)
 		controlPackage[++pos] = filename[i];
 	}
 
+}	*/
 
-	//LLWRITE AQUI
-
-}	
-void sendMessage(int fd, unsigned char* buf, int buf_size)
+int sendMessage(int fd, unsigned char* buf, int buf_size)
 {
-	unsigned char* message = (char*)malloc(100);//createMessage(buf, buf_size);
+	unsigned char* message = (unsigned char*)malloc(2*BLOCK);//createMessage(buf, buf_size);
 	//buf_size = buf_size + (6 * sizeof(char));
 	//buf_size = byteStuffing(message, buf_size); //vamos tentar enviar 1ยบ sem bytestuffing
 	int size=createMessage(buf,message, buf_size);
@@ -619,16 +646,18 @@ void sendMessage(int fd, unsigned char* buf, int buf_size)
 	  printf("Error sending message \n");
 
 	free(message);
+
+	return size - 6;
 }
 
 int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 {
-	int msg_size = 6 * sizeof(char);
-	//unsigned char* message = malloc(msg_size + buf_size);
 
+	unsigned char* newBuff=(unsigned char*)malloc(2*BLOCK);
+	memcpy(newBuff,buf,buf_size);
 	unsigned char controlCamp = linkLayer->sequenceNumber << 6;
-	unsigned char BCC1 = A ^ controlCamp;
-	char BCC2=blockCheckCharacter(&buf[0],buf_size);
+	//unsigned char BCC1 = A ^ controlCamp;
+	char BCC2=blockCheckCharacter(&newBuff[0],buf_size);
 	/*unsigned char BCC2;
 	int i;
 	for(i = 0; i < buf_size; i++)
@@ -638,11 +667,17 @@ int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 	message[1] = A;
 	message[2] = controlCamp;
 	message[3] = A^controlCamp;
-	int newSize = byteStuffing(buf, buf_size);
-	memcpy(&message[4], buf, newSize);
+
+	int newSize;// = buf_size;
+	//if(counterNumOfAttempts == 0){
+	//printf("oioioioioioi %d",contador);
+	//contador++;
+	newSize = byteStuffing(newBuff, buf_size);
+	//}
+	memcpy(&message[4], newBuff, newSize);
 	message[4+newSize] = BCC2;
 	message[5+newSize] = FLAG;
-
+	free(newBuff);
 	return newSize+6;
  }
 
@@ -654,5 +689,6 @@ void printStats(){
 	printf("Numero de tramas recebidas: %d \n", stats->receivedTramas);
 	printf("Numero de timeOuts: %d \n", stats->timeoutOcurrences);
 	printf("Numero de tramas rejeitadas: %d \n", stats->numRej);
+	printf("Numero de tramas repetidas: %d \n", stats->numRR);
 
 }
