@@ -10,7 +10,7 @@ void clearStdin(){
 	while ((c = getchar()) != '\n' && c != EOF) { }
 
 }
-
+//Lets you choose the port to open
 void choosePort(char * name){
 
   int option;
@@ -41,7 +41,7 @@ void choosePort(char * name){
 	   
    
 }
-
+//Lets you choose the number of attempts to retry
 int chooseNRetries(){
   int option;
 
@@ -57,7 +57,7 @@ int chooseNRetries(){
     return option;
 
 }
-
+//Lets you choose the baudrate of the connection
 int chooseBaudRate(){
   int option;
 
@@ -98,7 +98,7 @@ while(1){
 
   return 0;
 }
-
+//Lets you choose the time it waits for a response
 int chooseTimeout(){
   int option;
 
