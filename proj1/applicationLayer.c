@@ -18,7 +18,7 @@ int receiveControlPacket(){
 	free(fileName);
 	return 0;
 }
-//TODO:NOTE: no datalink.c ja tem completo "sendControlPackage(int control, int fd, char* filename, char* filesize)"
+
 int sendControlPacket(int i){
 	char size[4];
 	sprintf(size,"%x",500);
