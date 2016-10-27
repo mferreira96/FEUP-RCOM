@@ -29,10 +29,10 @@ int  main(int argc, char** argv){
   int x;
   if(strcmp(argv[1], "0")==0){
     printf("TRANSMITTER\n");
-   x =initAppLayer(port,TRANSMITTER);//= llopen(argv[2],TRANSMITTER);
+   x =initAppLayer(port,TRANSMITTER);
   }else{
     printf("RECIEVER\n");
-   x = initAppLayer(port,RECEIVER);//llopen(argv[2],RECEIVER);
+   x = initAppLayer(port,RECEIVER);
  }
   if(x != 0){
     perror("Error on llopen");
