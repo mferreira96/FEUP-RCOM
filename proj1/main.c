@@ -9,7 +9,7 @@
 int  main(int argc, char** argv){
 
   if(argc != 2){
-    printf("Usage:./main flagMode");
+    printf("Usage:./main flagMode (0 - send, 1 - receive) \n");
     exit(1);
   }
  	

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "Cli.h"
+#include "DataLink.h"
 
 
 void clearStdin(){
@@ -16,8 +17,8 @@ void choosePort(char * name){
   int option;
 
   printf("choose  port name: \n");
-  printf(" 0 - /dev/ttyS0 (Send) \n"); //Send
-  printf(" 1 - /dev/ttyS1 (Receive) \n"); //Receive
+  printf(" 0 - /dev/ttyS0 \n");
+  printf(" 1 - /dev/ttyS1 \n");
   printf("option = ");
   scanf("%d",&option);
   clearStdin();
@@ -118,13 +119,13 @@ int chooseTimeout(){
 
 int chooseFileToSend()
 {
-	printf("\n write file to send: \n");
+	printf("\nwrite file to send: \n");
 	scanf("%s",fname);
 	if( access( fname, F_OK ) != -1 ) 
 		return 1;
   
 	
-	prinf("\n FILE %s DOESNT EXIST \n", fname);
+	printf("\nFILE %s DOESNT EXIST \n", fname);
 	return 0;	
 }
 

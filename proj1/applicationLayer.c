@@ -51,7 +51,7 @@ void writeOnFile(unsigned char * data){
 int sendControlPacket(int i){
 
 	struct stat buf;
-	int fd=open("pinguim.gif", O_RDONLY);
+	int fd=open(fname, O_RDONLY);
 	if(fd < 0){
 		printf("Error opening file to be sent \n");	
 	}
@@ -70,8 +70,8 @@ int sendControlPacket(int i){
 	data[2]=4;
 	memmove(data+3,size,4);
 	data[7]=1;
-	data[8]=strlen("pinguim.gif");
-	memmove(data+9,"pinguim.gif",(int)data[8]);
+	data[8]=strlen(fname);
+	memmove(data+9,fname,(int)data[8]);
 
 	llwrite(application->fileDescriptor,data,9+(int)data[8]);
 	free(data);
