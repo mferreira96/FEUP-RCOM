@@ -37,8 +37,8 @@
 typedef struct {
   char port[20];
   int baudRate;
-  unsigned int sequenceNumber;
-  unsigned int timeOut;
+  unsigned int sequenceNumber; //0 or 1
+  unsigned int timeOut;  
   unsigned int numTransmissions;
   char frame[MAX_FRAME_SIZE];
   struct termios oldtio,newtio;
@@ -61,6 +61,8 @@ typedef struct{
 	int numRR;
 }Stats;
 
+
+char fname[256];
 
 extern LinkLayer* linkLayer;
 

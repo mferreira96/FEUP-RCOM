@@ -21,13 +21,16 @@
 
 void choosePort(char * name);
 
+//times it tries to resend message
 int chooseNRetries();
 
+//timeout time used by the alarm
 int chooseTimeout();
 
 int chooseBaudRate();
 
 int chooseMaxSize();
 
+int chooseFileToSend();
 
 #endif

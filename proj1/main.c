@@ -15,6 +15,13 @@ int  main(int argc, char** argv){
  	
   char port[20];
   choosePort(port);
+  
+  if(strcmp(argv[1], "0")==0)
+  {
+	  if(chooseFileToSend()==0) //file doesnt exist
+		  return 0;
+  }
+  
   int nRetries = chooseNRetries();
   int time = chooseTimeout();
   int baudRate = chooseBaudRate();

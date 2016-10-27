@@ -16,8 +16,8 @@ void choosePort(char * name){
   int option;
 
   printf("choose  port name: \n");
-  printf(" 0 - /dev/ttyS0 \n");
-  printf(" 1 - /dev/ttyS1 \n");
+  printf(" 0 - /dev/ttyS0 (Send) \n"); //Send
+  printf(" 1 - /dev/ttyS1 (Receive) \n"); //Receive
   printf("option = ");
   scanf("%d",&option);
   clearStdin();
@@ -116,7 +116,17 @@ int chooseTimeout(){
 
 }
 
-
+int chooseFileToSend()
+{
+	printf("\n write file to send: \n");
+	scanf("%s",fname);
+	if( access( fname, F_OK ) != -1 ) 
+		return 1;
+  
+	
+	prinf("\n FILE %s DOESNT EXIST \n", fname);
+	return 0;	
+}
 
 int chooseMaxSize(){
   return 0;
