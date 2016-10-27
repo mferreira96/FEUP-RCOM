@@ -4,22 +4,35 @@
 #include <unistd.h>
 
 #include "applicationLayer.h"
+#include "Cli.h"
 
 int  main(int argc, char** argv){
 
-  if(argc != 3){
+  if(argc != 2){
     printf("Usage:./main flagMode");
     exit(1);
   }
-  configLinkLayer(argv[1]);
+ 	
+  char port[20];
+  choosePort(port);
+  int nRetries = chooseNRetries();
+  int time = chooseTimeout();
+  int baudRate = chooseBaudRate();
+
+  printf("port = %s \n", port);
+  printf("nretries = %d \n", nRetries);	
+  printf("time  = %d \n", time);
+  printf("baud = %d \n", baudRate);
+
+  configLinkLayer(port, nRetries, time, baudRate);
 
   int x;
   if(strcmp(argv[1], "0")==0){
     printf("TRANSMITTER\n");
-   x =initAppLayer(argv[2],TRANSMITTER);//= llopen(argv[2],TRANSMITTER);
+   x =initAppLayer(port,TRANSMITTER);//= llopen(argv[2],TRANSMITTER);
   }else{
     printf("RECIEVER\n");
-   x = initAppLayer(argv[2],RECEIVER);//llopen(argv[2],RECEIVER);
+   x = initAppLayer(port,RECEIVER);//llopen(argv[2],RECEIVER);
  }
   if(x != 0){
     perror("Error on llopen");
