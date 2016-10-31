@@ -206,10 +206,9 @@ int readingCycle(TypeOfFrame typeOfFrame,unsigned char * buffer,int fd){
 			{
 				//printf("c =  %c \n", t[0]);
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
-		if(lastState!=state||state==4){
+		if(state==4){
 			pos++;
-			lastState=state;
-		}        
+		}else pos=state
 		//printf("state %d \n", state);
       }
 		
@@ -256,7 +255,7 @@ int llread(int fd,unsigned char * data){
 
 
   	memcpy(data,&buffer[4],pos-6);
-	int correctSize =  deByteStuffing(data,pos-6);
+	int correctSize =  deByteStuffing(data,pos-5);
 	int flagMal=0;
 
 
@@ -658,6 +657,7 @@ int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 	unsigned char controlCamp = linkLayer->sequenceNumber << 6;
 	//unsigned char BCC1 = A ^ controlCamp;
 	char BCC2=blockCheckCharacter(&newBuff[0],buf_size);
+	buf[buf_size]=BCC2;
 	/*unsigned char BCC2;
 	int i;
 	for(i = 0; i < buf_size; i++)
@@ -672,11 +672,11 @@ int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
 	//if(counterNumOfAttempts == 0){
 	//printf("oioioioioioi %d",contador);
 	//contador++;
-	newSize = byteStuffing(newBuff, buf_size);
+	newSize = byteStuffing(newBuff, buf_size+1);
 	//}
 	memcpy(&message[4], newBuff, newSize);
-	message[4+newSize] = BCC2;
-	message[5+newSize] = FLAG;
+	//message[4+newSize] = BCC2;
+	message[4+newSize] = FLAG;
 	free(newBuff);
 	return newSize+6;
  }
