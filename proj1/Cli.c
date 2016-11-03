@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "Cli.h"
-
+#include "DataLink.h"
 
 void clearStdin(){
 	char c;
@@ -116,6 +116,19 @@ int chooseTimeout(){
 
 }
 
+
+char* chooseFileToSend()
+{
+	char* fname = malloc(256);
+	printf("\nwrite file to send: \n");
+	scanf("%s",fname);
+	if( access( fname, F_OK ) != -1 ) 
+		return fname;
+  
+	
+	printf("\n FILE %s DOESNT EXIST \n", fname);
+	exit(0);	
+}
 
 
 int chooseMaxSize(){

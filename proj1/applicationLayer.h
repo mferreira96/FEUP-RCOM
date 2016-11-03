@@ -5,8 +5,10 @@ typedef struct{
 
 	int status;
 
+	char* fname;
+
 }applicationLayer;
 
 applicationLayer * application;
 
-int initAppLayer(char serialPort[], int type);
+int initAppLayer(char serialPort[], int type, char* fileName);

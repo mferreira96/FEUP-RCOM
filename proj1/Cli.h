@@ -29,5 +29,7 @@ int chooseBaudRate();
 
 int chooseMaxSize();
 
+char* chooseFileToSend();
+
 
 #endif
