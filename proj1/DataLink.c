@@ -13,8 +13,7 @@ Stats* stats;
 unsigned int timeout;
 unsigned int alarm_n;
 
-void printStats();
-int connectTransmitter(int fd);
+
 
 
 int configLinkLayer(char pt[], int numRetries, int time, int baudrate){
@@ -120,9 +119,6 @@ void sigalrm_handler(){
 }
 
 
-
-// send frame
-//TUDO ainda por acabar
 int llwrite(int fd, unsigned char *buffer, int length){
 
 	timeout = 0;
@@ -196,7 +192,6 @@ int readingCycle(TypeOfFrame typeOfFrame,unsigned char * buffer,int fd){
 	int state = 0;
 	int r = 0;
   	int pos=0;
-	int lastState=0;
   	STOP=FALSE;
 	alarm(linkLayer->timeOut * linkLayer->numTransmissions);
 	while(STOP == FALSE){
@@ -208,7 +203,7 @@ int readingCycle(TypeOfFrame typeOfFrame,unsigned char * buffer,int fd){
         state = stateMachine(t[0], state, buffer,typeOfFrame,pos);
 		if(state==4){
 			pos++;
-		}else pos=state
+		}else pos=state;
 		//printf("state %d \n", state);
       }
 		
@@ -649,7 +644,7 @@ int sendMessage(int fd, unsigned char* buf, int buf_size)
 	return size - 6;
 }
 
-int createMessage(const unsigned char* buf,unsigned char* message, int buf_size)
+int createMessage(unsigned char* buf,unsigned char* message, int buf_size)
 {
 
 	unsigned char* newBuff=(unsigned char*)malloc(2*BLOCK);

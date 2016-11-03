@@ -1,8 +1,7 @@
 #include "applicationLayer.h"
 int fd; 
 
-int createfile( char* fileName);
-int sendFile(int fd);
+
 
 //receives and process info from start packet
 int receiveControlPacket(){
@@ -55,7 +54,7 @@ void writeOnFile(unsigned char * data){
 int sendControlPacket(int i){
 
 	struct stat buf;
-	int fd=open("pinguim.gif", O_RDONLY);
+	int fd=open(application->fname, O_RDONLY);
 	if(fd < 0){
 		printf("Error opening file to be sent \n");	
 	}
@@ -74,8 +73,8 @@ int sendControlPacket(int i){
 	data[2]=4;
 	memmove(data+3,size,4);
 	data[7]=1;
-	data[8]=strlen("pinguim.gif");
-	memmove(data+9,"pinguim.gif",(int)data[8]);
+	data[8]=strlen(application->fname);
+	memmove(data+9,application->fname,(int)data[8]);
 
 	llwrite(application->fileDescriptor,data,9+(int)data[8]);
 	free(data);
@@ -107,10 +106,11 @@ int readFile(){
 }
 
 //the application layer is initialized, sends and recevives data packets
-int initAppLayer(char serialPort[], int type){
+int initAppLayer(char serialPort[], int type, char* fileName){
 
   application = (applicationLayer *) malloc(sizeof(applicationLayer));
   application->fileDescriptor = openSerialPort(serialPort);
+  application->fname = fileName;
 
   application->status = type;
   if (setNewTermios(application->fileDescriptor, application->status) != 0){            // set new termios
@@ -158,7 +158,7 @@ int initAppLayer(char serialPort[], int type){
 
 //reads from file and calls llwrite
 int sendFile(int fd){
-	FILE *f = fopen("pinguim.gif","r");
+	FILE *f = fopen(application->fname,"r");
 
 	if(f == NULL){
 		perror("Error openning file to send \n");

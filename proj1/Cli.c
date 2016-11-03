@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <termios.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "Cli.h"
 
@@ -116,6 +118,19 @@ int chooseTimeout(){
 
 }
 
+
+char* chooseFileToSend()
+{
+	char* fname = malloc(256);
+	printf("\nwrite file to send: \n");
+	scanf("%s",fname);
+	if( access( fname, F_OK ) != -1 ) 
+		return fname;
+  
+	
+	printf("\n FILE %s DOESNT EXIST \n", fname);
+	exit(0);	
+}
 
 
 int chooseMaxSize(){
