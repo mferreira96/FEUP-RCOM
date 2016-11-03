@@ -1,8 +1,7 @@
 #include "applicationLayer.h"
 int fd; 
 
-int createfile( char* fileName);
-int sendFile(int fd);
+
 
 //receives and process info from start packet
 int receiveControlPacket(){

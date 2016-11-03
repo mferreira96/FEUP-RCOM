@@ -13,8 +13,7 @@ Stats* stats;
 unsigned int timeout;
 unsigned int alarm_n;
 
-void printStats();
-int connectTransmitter(int fd);
+
 
 
 int configLinkLayer(char pt[], int numRetries, int time, int baudrate){
@@ -120,9 +119,6 @@ void sigalrm_handler(){
 }
 
 
-
-// send frame
-//TUDO ainda por acabar
 int llwrite(int fd, unsigned char *buffer, int length){
 
 	timeout = 0;

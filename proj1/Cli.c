@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <termios.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "Cli.h"
-#include "DataLink.h"
+
 
 void clearStdin(){
 	char c;

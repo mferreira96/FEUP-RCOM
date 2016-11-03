@@ -104,6 +104,14 @@ int byteStuffing(unsigned char packet[], int size);
 
 int deByteStuffing(unsigned char packet[], int size);
 
+int readingCycle(TypeOfFrame typeOfFrame,unsigned char * buffer,int fd);
 
+void setAndSendDisc(int fd);
+
+int closeSerialPort(int fd);
+
+void printStats();
+
+int connectTransmitter(int fd);
 
 #endif
