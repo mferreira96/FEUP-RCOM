@@ -1,5 +1,5 @@
-#ifndef CONNECTION_H
-#define CONNECTION_H
+#ifndef URL_H
+#define URL_H
 
 #include <stdio.h>
 #include <string.h>
@@ -13,25 +13,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-
 typedef struct{
-	int fileDescriptor;
-	int port;
-	char * ip;
-}connection;
+	char * user;
+	char * password;
+	char * host;
+	char * url_patch;
+}url;
 
-
-int get_ip();
-
-int connect();
-
-int login_host();
-
-int passive();
-
-int get_path();
-
-int download();
+void init(char * url_name, url * url);
 
 
 #endif

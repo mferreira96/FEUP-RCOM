@@ -1,11 +1,14 @@
-#include <string.h>
-#include "connection.h"
 
-int get_ip(){
+#include "connection.h"
+#include "url.h"
+
+
+
+int get_ip(connection * connection, char * host	){
 
   struct hostent *h;
 
-  if ((h=gethostbyname(argv[1])) == NULL) {
+  if ((h=gethostbyname(host)) == NULL) {
       herror("gethostbyname");
       exit(1);
   }

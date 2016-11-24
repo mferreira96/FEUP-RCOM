@@ -6,3 +6,6 @@ main.o: main.c
 
 connection.o: connection.c
 	gcc -c connection.c -Wall
+
+url.o: url.c
+	gcc -c url.c -Wall	
