@@ -21,13 +21,13 @@ typedef struct{
 }connection;
 
 
-int get_ip();
+int get_ip(connection * connection, char * host	);
 
-int connect();
+int connect(connection * connection);
 
-int login_host();
+int login_host(connection * connection, url * url);
 
-int passive();
+int passive(connection * connection,connection * connection2);
 
 int get_path();
 
