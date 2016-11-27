@@ -9,13 +9,13 @@ tem de ser passado exclusivamente neste tipo de estrutura char str[N]=..., caso 
 */
 
 // ftp://[<user>:<password>@]<host>/<url-path>
-int init(char * url_name, url * url){
+int fdp(char * url_name, url * url){
 
   char * ftp = malloc(6*sizeof(char));
   memcpy(ftp, url_name, 6);
 
   if(strcmp(ftp, "ftp://") != 0){
-    perror('error, the url should start with ftp:// \n');
+    perror("the url should start with ftp://");
     exit(1);
   }
 
@@ -26,7 +26,7 @@ int init(char * url_name, url * url){
 
 	if(strtok(url_name, a)==NULL)
 		return -1;
-	if((url->user = strtok(NULL, b)==NULL))
+	if((url->user = strtok(NULL, b))==NULL)
 		return -1;
 	if((url->password = strtok(NULL, c))==NULL)
 		return -1;
