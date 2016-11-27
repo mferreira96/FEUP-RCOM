@@ -1,5 +1,5 @@
-main: main.o connection.o
-	gcc -o main main.o connection.o
+main: main.o connection.o url.o
+	gcc -o main main.o connection.o url.o
 
 main.o: main.c
 	gcc -c main.c  -Wall
