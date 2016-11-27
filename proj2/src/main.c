@@ -10,7 +10,7 @@ int main (int argc, char *argv[]) {
   url * receivedUrl;
  receivedUrl = (url *) malloc(sizeof(url));
 
-  if(fdp(argv[1],receivedUrl)!=0){
+  if(init(argv[1],receivedUrl)!=0){
     perror("url was not in the corretc form - ftp://[<user>:<password>@]<host>/<url-path>");
     exit(1);
   }
