@@ -9,7 +9,7 @@ tem de ser passado exclusivamente neste tipo de estrutura char str[N]=..., caso 
 */
 
 // ftp://[<user>:<password>@]<host>/<url-path>
-void init(char * url_name, url * url){
+int init(char * url_name, url * url){
 
   char * ftp = malloc(6*sizeof(char));
   memcpy(ftp, url_name, 6);
@@ -24,22 +24,18 @@ void init(char * url_name, url * url){
 	const char c[2] = "@";
 	const char d[2] = "/";
 
-	strtok(url_name, a);
-	url->user = strtok(NULL, b);
-	url->password = strtok(NULL, c);
-	url->host = strtok(NULL, d);
+	if(strtok(url_name, a)==NULL)
+		return -1;
+	if((url->user = strtok(NULL, b)==NULL))
+		return -1;
+	if((url->password = strtok(NULL, c))==NULL)
+		return -1;
+	if((url->host = strtok(NULL, d))==NULL)
+		return -1;
 	url->host++;
-	url->url_patch = strtok(NULL, d);  //nao seria suposto ser url->path?
-  
-  /*
-  TESTE para "ftp://[up201305016:BoraVanessa@]129.56.53.1/urlpath"
-  
-  printf( " %s\n", url->user );
-printf( " %s\n", url->password);
-printf( " %s\n", url->host);
-printf( " %s\n",url->url_patch); 
+	if((url->url_patch = strtok(NULL, d))==NULL) //nao seria suposto ser url->path?
+		return -1;
+	
+  return 0;
 
-funcionou bem
-  
-  */
 }
