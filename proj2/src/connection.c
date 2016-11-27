@@ -1,6 +1,5 @@
 
 #include "connection.h"
-#include "url.h"
 
 
 
@@ -21,7 +20,7 @@ int get_ip(connection * connection, char * host	){
 }
 
 
-int connect(connection * connection){
+int connectTo(connection * connection){
   
   int sockfd;
   struct	sockaddr_in server_addr;
@@ -52,7 +51,9 @@ if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
 
 int login_host(connection * connection, url * url){
   char * user;
+  user =(char*) malloc(50*sizeof(char));
   char * pass;
+  pass =(char*) malloc(50*sizeof(char));
   char response[4];
   sprintf(user, "USER %s\n", url->user);
   write(connection->fileDescriptor, user, strlen(user));
@@ -71,15 +72,15 @@ int login_host(connection * connection, url * url){
   return 0;
 }
 
-int passive(connection * connection,connection * connection2){
+int passiveMode(connection * connection1,connection * connection2){
   char response[1000];
-  write(connection->fileDescriptor, "pasv\n", strlen("pasv\n"));
-  read(connection->fileDescriptor, response, 1000);
+  write(connection1->fileDescriptor, "pasv\n", strlen("pasv\n"));
+  read(connection1->fileDescriptor, response, 1000);
   
   int ip1, ip2, ip3, ip4, p1, p2;
   sscanf(response, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)", &ip1,&ip2, &ip3, &ip4, &p1, &p2);
 
-  sprintf(connection2->host, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+  sprintf(connection2->ip, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
 
   connection2->port = p1*256+p2;
 
