@@ -7,6 +7,43 @@ int main (int argc, char *argv[]) {
     perror("Error on number of arguments");
     exit(1);
   }
+  url * receivedUrl;
+ receivedUrl = (url *) malloc(sizeof(url));
+
+  if(init(argv[1],receivedUrl)!=0){
+    perror("url was not in the corretc form - ftp://[<user>:<password>@]<host>/<url-path>");
+    exit(1);
+  }
+  
+  connection * connectionFTP;
+  connectionFTP =(connection*) malloc(sizeof(connection));
+  
+  char *host; //este host é suposto ser igual ao url->host q é passado como argumento?
+  if(get_ip(connectionFTP,host)!=0){
+    perror("Error getting ip");
+    exit(1);
+  }
+  
+  if(connect(connectionFTP)!=0){
+    perror("Unable to connect");
+    exit(1);
+  }
+  
+  if(login_host(connectionFTP,receivedUrl)!=0){
+    perror("Unable to login");
+    exit(1);
+  }
+  
+  connection * connectionFTP2;
+  connectionFTP2 =(connection*) malloc(sizeof(connection));
+  
+  if(passive(connectionFTP,connectionFTP2)!=0){
+    perror("Unable to passive");
+    exit(1);
+  }
+  
+  
+  
 
 
 
