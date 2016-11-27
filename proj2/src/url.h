@@ -20,7 +20,7 @@ typedef struct{
 	char * url_patch;
 }url;
 
-int init(char * url_name, url * url);
+int fdp(char * url_name, url * url);
 
 
 #endif
