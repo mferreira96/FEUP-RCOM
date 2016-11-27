@@ -10,7 +10,7 @@ int main (int argc, char *argv[]) {
   url * receivedUrl;
  receivedUrl = (url *) malloc(sizeof(url));
 
-  if(init(argv[1],receivedUrl)!=0){
+  if(fdp(argv[1],receivedUrl)!=0){
     perror("url was not in the corretc form - ftp://[<user>:<password>@]<host>/<url-path>");
     exit(1);
   }
@@ -19,12 +19,13 @@ int main (int argc, char *argv[]) {
   connectionFTP =(connection*) malloc(sizeof(connection));
   
   char *host; //este host é suposto ser igual ao url->host q é passado como argumento?
+  host =(char*) malloc(50*sizeof(char));
   if(get_ip(connectionFTP,host)!=0){
     perror("Error getting ip");
     exit(1);
   }
   
-  if(connect(connectionFTP)!=0){
+  if(connectTo(connectionFTP)!=0){
     perror("Unable to connect");
     exit(1);
   }
@@ -37,12 +38,10 @@ int main (int argc, char *argv[]) {
   connection * connectionFTP2;
   connectionFTP2 =(connection*) malloc(sizeof(connection));
   
-  if(passive(connectionFTP,connectionFTP2)!=0){
+  if(passiveMode(connectionFTP,connectionFTP2)!=0){
     perror("Unable to passive");
     exit(1);
   }
-  
-  
   
 
 
