@@ -15,13 +15,13 @@ int get_ip(connection * connection, char * host	){
   //printf("Host name  : %s\n", h->h_name);
   connection->ip=inet_ntoa(*((struct in_addr *)h->h_addr));
   connection->port=21;
-  
+
   return 0;
 }
 
 
 int connectTo(connection * connection){
-  
+
   int sockfd;
   struct	sockaddr_in server_addr;
 /*server address handling*/
@@ -40,11 +40,11 @@ if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
     perror("connect()");
     exit(0);
   }
-  
+
   connection->fileDescriptor=sockfd;
-  
+
   //falta a parte de confirmar com o servidor mandando mensagens
-  
+
   return 0;
 }
 
@@ -61,14 +61,14 @@ int login_host(connection * connection, url * url){
   if(strcmp(response,"331")!=0)
     return -1;
   bzero(response,4);
-  
+
   sprintf(pass, "PASS %s\n", url->password);
   write(connection->fileDescriptor, pass, strlen(pass));
   read(connection->fileDescriptor, response, 3);
-  
+
   if(strcmp(response,"230")!=0)
     return -1;
-  
+
   return 0;
 }
 
@@ -76,7 +76,7 @@ int passiveMode(connection * connection1,connection * connection2){
   char response[1000];
   write(connection1->fileDescriptor, "pasv\n", strlen("pasv\n"));
   read(connection1->fileDescriptor, response, 1000);
-  
+
   int ip1, ip2, ip3, ip4, p1, p2;
   sscanf(response, "227 Entering Passive Mode (%d,%d,%d,%d,%d,%d)", &ip1,&ip2, &ip3, &ip4, &p1, &p2);
 
@@ -93,7 +93,44 @@ int get_path(){
 }
 
 
-int download(){
+int download(connection * connection, char * path){
+
+  char * fileName = basename(path);
+  char data[BUF_SIZE];
+
+  int fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC);
+
+  if(fd == -1){
+    perror("open");
+    close(connection->fileDescriptor);
+    exit(1);
+  }
+
+
+  size_t nr;
+  size_t nw;
+  while((nr = read(connection->fileDescriptor,data,BUF_SIZE)) > 0){
+
+    nw = write(fd,data,nr);
+
+    if(nw == -1){
+      perror("write on file");
+      close(fd);
+      close(connection->fileDescriptor);
+      exit(1);
+    }
+
+  }
+
+  if(nr == -1){
+    perror("reading file");
+    close(fd);
+    close(connection->fileDescriptor);
+    exit(1);
+  }
+
+  close(fd);
+  close(connection->fileDescriptor);
 
   return 0;
 }
