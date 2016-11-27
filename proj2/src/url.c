@@ -9,7 +9,7 @@ tem de ser passado exclusivamente neste tipo de estrutura char str[N]=..., caso 
 */
 
 // ftp://[<user>:<password>@]<host>/<url-path>
-int fdp(char * url_name, url * url){
+int init(char * url_name, url * url){
 
   char * ftp = malloc(6*sizeof(char));
   memcpy(ftp, url_name, 6);
