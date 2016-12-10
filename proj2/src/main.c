@@ -18,9 +18,9 @@ int main (int argc, char *argv[]) {
   connection * connectionFTP;
   connectionFTP =(connection*) malloc(sizeof(connection));
   
-  char *host; //este host é suposto ser igual ao url->host q é passado como argumento?
-  host =(char*) malloc(50*sizeof(char));
-  if(get_ip(connectionFTP,host)!=0){
+ // char *host; //este host é suposto ser igual ao url->host q é passado como argumento?
+  //host =(char*) malloc(50*sizeof(char));
+  if(get_ip(connectionFTP,receivedUrl->host)!=0){
     perror("Error getting ip");
     exit(1);
   }
@@ -37,7 +37,6 @@ int main (int argc, char *argv[]) {
   
   connection * connectionFTP2;
   connectionFTP2 =(connection*) malloc(sizeof(connection));
-  
   if(passiveMode(connectionFTP,connectionFTP2)!=0){
     perror("Unable to passive");
     exit(1);

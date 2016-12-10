@@ -19,22 +19,24 @@ int init(char * url_name, url * url){
     exit(1);
   }
 
- const char a[2] = "[";
 	const char b[2] = ":";
 	const char c[2] = "@";
-	const char d[2] = "/";
-
-	if(strtok(url_name, a)==NULL)
-		return -1;
-	if((url->user = strtok(NULL, b))==NULL)
+	const char d[2] = "";
+	const char e[2] = "/";
+	url_name+=6;
+	if((url->user = strtok(url_name, b))==NULL)
 		return -1;
 	if((url->password = strtok(NULL, c))==NULL)
 		return -1;
-	if((url->host = strtok(NULL, d))==NULL)
+	if((url->host = strtok(NULL, e))==NULL)
 		return -1;
-	url->host++;
 	if((url->url_patch = strtok(NULL, d))==NULL) //nao seria suposto ser url->path?
 		return -1;
+
+printf("user: %s \n",url->user);
+printf("pass: %s \n",url->password);
+printf("host: %s \n",url->host);
+printf("path: %s \n",url->url_patch);
 	
   return 0;
 
