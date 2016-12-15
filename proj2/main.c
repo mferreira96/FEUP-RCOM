@@ -36,7 +36,7 @@ int main (int argc, char *argv[]) {
   	read(connectionFTP->fileDescriptor, response, 100);
 	if(response[0]!='2' ||response[1]!='2' ||response[2]!='0')
 		return -1;
-	printf("uifhduifhsiuhm \n");
+
 	char responseSaid[100];
 	bzero(responseSaid,100);
 	strncpy ( responseSaid, response+4, 96);

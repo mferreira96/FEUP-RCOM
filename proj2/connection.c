@@ -84,11 +84,6 @@ printf("%s",responsePass);
 }
 bzero(responseSaid,4);
 	strncpy ( responseSaid, responsePass, 3);
-int i=0;
-for(i;i<1000;i++){
-printf("oioioio %d %c \n",i,responsePass[i]);
-}
-printf("oioioio %s %c \n",responseSaid,responsePass[0]);
 
   if(strcmp(responseSaid,"230")!=0)
     return -1;
@@ -165,7 +160,7 @@ read(firstFD,receiveMes,100);
   size_t nw;
 int counter=0;
   while((nr = recv(connection->fileDescriptor,data,BUF_SIZE,0)) > 0){
-printf("yoloolo  %s \n",data);
+
     nw = write(fd,data,nr);
 bzero(data,BUF_SIZE);
 counter+=nr;
@@ -176,7 +171,7 @@ counter+=nr;
       exit(1);
     }
   }
-printf("yolo %d \n",counter);
+
   if(nr == -1){
     perror("reading file");
     close(fd);
