@@ -37,7 +37,6 @@ if ((sockfd = socket(AF_INET,SOCK_STREAM,0)) < 0) {
     exit(0);
   }
 
-printf("ip: %d \n",connection->port);
 
 /*connect to the server*/
   if(connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0){
@@ -47,16 +46,7 @@ printf("ip: %d \n",connection->port);
 
   connection->fileDescriptor=sockfd;
 
-  	char response[40];
-	bzero(response,40);
-  	read(connection->fileDescriptor, response, 40);
-	if(response[0]!='2' ||response[1]!='2' ||response[2]!='0')
-		return -1;
-	
-	char responseSaid[40];
-	bzero(responseSaid,40);
-	strncpy ( responseSaid, response+4, 36);
-	printf("%s",responseSaid);
+
 
 
   return 0;
@@ -68,13 +58,12 @@ int login_host(connection * connection, url * url){
   user =(char*) malloc(50*sizeof(char));
   char * pass;
   pass =(char*) malloc(50*sizeof(char));
-  
-	char response[40];
-
+	char response[100];
+	bzero(response,100);
  sprintf(user, "USER %s\n", url->user);
-
   write(connection->fileDescriptor, user, strlen(user));
-  read(connection->fileDescriptor, response, 40);
+
+  read(connection->fileDescriptor, response, 100);
   printf("%s",response);
 char responseSaid[4];
 	bzero(responseSaid,4);
@@ -84,16 +73,22 @@ if(strcmp(responseSaid,"331")!=0){
     return -1;}
 
   bzero(response,4);
-	char responsePass[40];
-bzero(responsePass,40);
+	char responsePass[1000];
+bzero(responsePass,1000);
   sprintf(pass, "PASS %s\n", url->password);
   write(connection->fileDescriptor, pass, strlen(pass));
-  read(connection->fileDescriptor, responsePass, 40);
-
-  printf("%s",responsePass);
-
+sleep(1);
+read(connection->fileDescriptor, responsePass, 1000);
+  	{
+printf("%s",responsePass);
+}
 bzero(responseSaid,4);
 	strncpy ( responseSaid, responsePass, 3);
+int i=0;
+for(i;i<1000;i++){
+printf("oioioio %d %c \n",i,responsePass[i]);
+}
+printf("oioioio %s %c \n",responseSaid,responsePass[0]);
 
   if(strcmp(responseSaid,"230")!=0)
     return -1;
@@ -125,7 +120,6 @@ bzero(response,1000);
   sprintf(connection2->ip, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
 
 
-
   connection2->port = p1*256+p2;
 
 
@@ -139,11 +133,13 @@ int get_path(){
 }
 
 
-int download(connection * connection, char * path){
+int download(int firstFD,connection * connection, char * path){
+  char * fileName=(char*) malloc(100*sizeof(char));
 
-  char * fileName = basename(path);
+ fileName= basename(path);
+
   char data[BUF_SIZE];
-
+	printf("%s \n", basename(path));
   int fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC);
 
   if(fd == -1){
@@ -151,23 +147,33 @@ int download(connection * connection, char * path){
     close(connection->fileDescriptor);
     exit(1);
   }
+ char * message=(char*) malloc(100*sizeof(char));
+ bzero(message,100);
+ sprintf(message,"RETR %s\r\n",path);
 
+ write(firstFD,message,strlen(message));
+
+ char * receiveMes=(char*) malloc(100*sizeof(char));
+
+ read(firstFD,receiveMes,100);
+ printf("%s \n",receiveMes);
 
   size_t nr;
   size_t nw;
-  while((nr = read(connection->fileDescriptor,data,BUF_SIZE)) > 0){
-
+int counter=0;
+  while((nr = recv(connection->fileDescriptor,data,BUF_SIZE,0)) > 0){
+printf("yoloolo  %s \n",data);
     nw = write(fd,data,nr);
-
+bzero(data,BUF_SIZE);
+counter+=nr;
     if(nw == -1){
       perror("write on file");
       close(fd);
       close(connection->fileDescriptor);
       exit(1);
     }
-
   }
-
+printf("yolo %d \n",counter);
   if(nr == -1){
     perror("reading file");
     close(fd);
@@ -179,4 +185,41 @@ int download(connection * connection, char * path){
   close(connection->fileDescriptor);
 
   return 0;
+}
+
+
+int disconnect(connection* connection, url* url)
+{
+	
+	
+	char* quitMessage = malloc(6* sizeof(char));
+	
+	char* received = malloc(100*sizeof(char));
+bzero(received,100);
+	read(connection->fileDescriptor,received,100);
+
+	printf("%s \n",received);
+
+	sprintf(quitMessage,"QUIT\r\n");
+	
+	write(connection->fileDescriptor,quitMessage,strlen(quitMessage));
+
+bzero(received,100);
+
+	read(connection->fileDescriptor,received,100);
+
+	printf("%s \n",received);
+
+
+	if(connection->fileDescriptor)
+	{
+		close(connection->fileDescriptor);
+		free(connection);	
+	}
+	
+	free(url);
+	
+	printf("Socket closed \n");
+
+	return 0;
 }
