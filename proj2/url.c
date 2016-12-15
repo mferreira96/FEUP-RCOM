@@ -36,6 +36,8 @@ int init(char * url_name, url * url){
       }
   }
 
+url->user =(char*)malloc(100);
+
   if(var == 1){
   	if((url->user = strtok(url_name, b))==NULL)
   		return -1;
@@ -46,8 +48,8 @@ int init(char * url_name, url * url){
   	if((url->url_patch = strtok(NULL, d))==NULL) //nao seria suposto ser url->path?
   		return -1;
   }else{
-      char name[100];
-      char pass[100];
+      char *name=(char*)malloc(100);
+ 	char *pass=(char*)malloc(100);
 
 
       printf("user = ");

@@ -60,6 +60,7 @@ int login_host(connection * connection, url * url){
   pass =(char*) malloc(50*sizeof(char));
 	char response[100];
 	bzero(response,100);
+printf("lolololol %s \n",url->user);
  sprintf(user, "USER %s\n", url->user);
   write(connection->fileDescriptor, user, strlen(user));
 
@@ -84,6 +85,7 @@ printf("%s",responsePass);
 }
 bzero(responseSaid,4);
 	strncpy ( responseSaid, responsePass, 3);
+
 
   if(strcmp(responseSaid,"230")!=0)
     return -1;
@@ -160,7 +162,7 @@ read(firstFD,receiveMes,100);
   size_t nw;
 int counter=0;
   while((nr = recv(connection->fileDescriptor,data,BUF_SIZE,0)) > 0){
-
+printf("yoloolo  %s \n",data);
     nw = write(fd,data,nr);
 bzero(data,BUF_SIZE);
 counter+=nr;
@@ -171,7 +173,7 @@ counter+=nr;
       exit(1);
     }
   }
-
+printf("yolo %d \n",counter);
   if(nr == -1){
     perror("reading file");
     close(fd);
