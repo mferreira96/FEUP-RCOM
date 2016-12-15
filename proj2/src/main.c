@@ -29,7 +29,20 @@ int main (int argc, char *argv[]) {
     perror("Unable to connect");
     exit(1);
   }
-  
+
+
+  	char response[100];
+	bzero(response,100);
+  	read(connectionFTP->fileDescriptor, response, 100);
+	if(response[0]!='2' ||response[1]!='2' ||response[2]!='0')
+		return -1;
+	printf("uifhduifhsiuhm \n");
+	char responseSaid[100];
+	bzero(responseSaid,100);
+	strncpy ( responseSaid, response+4, 96);
+	printf("%s \n",responseSaid);
+
+
   if(login_host(connectionFTP,receivedUrl)!=0){
     perror("Unable to login");
     exit(1);
@@ -41,7 +54,12 @@ int main (int argc, char *argv[]) {
     perror("Unable to passive");
     exit(1);
   }
-  
+
+	connectTo(connectionFTP2);
+
+	download(connectionFTP->fileDescriptor,connectionFTP2, receivedUrl->url_patch);
+ 
+	disconnect(connectionFTP,receivedUrl);
 
 
 
