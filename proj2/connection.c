@@ -150,12 +150,15 @@ int download(int firstFD,connection * connection, char * path){
  char * message=(char*) malloc(100*sizeof(char));
  bzero(message,100);
  sprintf(message,"RETR %s\r\n",path);
-
+ write(firstFD,"TYPE i\n",7);
  write(firstFD,message,strlen(message));
 
  char * receiveMes=(char*) malloc(100*sizeof(char));
 
  read(firstFD,receiveMes,100);
+ printf("%s \n",receiveMes);
+bzero(receiveMes,100);
+read(firstFD,receiveMes,100);
  printf("%s \n",receiveMes);
 
   size_t nr;
