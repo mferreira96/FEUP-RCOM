@@ -60,6 +60,7 @@ int login_host(connection * connection, url * url){
   pass =(char*) malloc(50*sizeof(char));
 	char response[100];
 	bzero(response,100);
+printf("lolololol %s \n",url->user);
  sprintf(user, "USER %s\n", url->user);
   write(connection->fileDescriptor, user, strlen(user));
 
@@ -84,11 +85,7 @@ printf("%s",responsePass);
 }
 bzero(responseSaid,4);
 	strncpy ( responseSaid, responsePass, 3);
-int i=0;
-for(i;i<1000;i++){
-printf("oioioio %d %c \n",i,responsePass[i]);
-}
-printf("oioioio %s %c \n",responseSaid,responsePass[0]);
+
 
   if(strcmp(responseSaid,"230")!=0)
     return -1;
@@ -150,12 +147,15 @@ int download(int firstFD,connection * connection, char * path){
  char * message=(char*) malloc(100*sizeof(char));
  bzero(message,100);
  sprintf(message,"RETR %s\r\n",path);
-
+ write(firstFD,"TYPE i\n",7);
  write(firstFD,message,strlen(message));
 
  char * receiveMes=(char*) malloc(100*sizeof(char));
 
  read(firstFD,receiveMes,100);
+ printf("%s \n",receiveMes);
+bzero(receiveMes,100);
+read(firstFD,receiveMes,100);
  printf("%s \n",receiveMes);
 
   size_t nr;
