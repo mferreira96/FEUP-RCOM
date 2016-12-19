@@ -1,13 +1,5 @@
 #include "url.h"
 
-/*
-char str[80]="ftp://[up201305016:BoraVanessa@]129.56.53.1/urlpath";
-
-init(str,<url structure>);
-
-tem de ser passado exclusivamente neste tipo de estrutura char str[N]=..., caso contrário temos uma visita da segmentation fault
-*/
-
 // ftp://[<user>:<password>@]<host>/<url-path>
 int init(char * url_name, url * url){
 
@@ -51,25 +43,14 @@ url->user =(char*)malloc(100);
       char *name=(char*)malloc(100);
  	char *pass=(char*)malloc(100);
 
-
-      printf("user = ");
-      scanf("%s",name);
-      url->user = name;
-
-      printf("password = ");
-      scanf("%s",pass);
-      url->password = pass;
+      url->user = "anonymous";
+      url->password = "oi";
 
       if((url->host = strtok(url_name, e))==NULL)
         return -1;
       if((url->url_patch = strtok(NULL, d))==NULL) //nao seria suposto ser url->path?
         return -1;
     }
-
-printf("user: %s \n",url->user);
-printf("pass: %s \n",url->password);
-printf("host: %s \n",url->host);
-printf("path: %s \n",url->url_patch);
 
   return 0;
 
